@@ -37,7 +37,8 @@ func start_room() -> void:
 
 func _spawn_wave() -> void:
 	wave += 1
-	wave_size = int(ceil(float(budget) / waves_total))
+	# Split the budget so the waves add up to it exactly; earlier waves take the remainder.
+	wave_size = budget / waves_total + (1 if wave <= budget % waves_total else 0)
 	wave_timer = WAVE_TIMEOUT
 	# Packs: spawn around 2 cluster centres so they arrive as crowds.
 	var centres: Array[Vector2] = [_spawn_point(), _spawn_point()]
@@ -66,7 +67,13 @@ func _portal(pos: Vector2) -> void:
 	pending += 1
 	game.fx.portal(pos, PORTAL_TIME)
 	Sfx.play("portal", randf_range(-2.0, 2.0), -12.0)
-	get_tree().create_timer(PORTAL_TIME, false).timeout.connect(func() -> void:
+	# A Timer child dies with the director, so a restart mid-portal can't spawn into a freed scene.
+	var t := Timer.new()
+	t.one_shot = true
+	t.wait_time = PORTAL_TIME
+	add_child(t)
+	t.timeout.connect(func() -> void:
+		t.queue_free()
 		pending -= 1
 		if game.dead:
 			return
@@ -74,6 +81,7 @@ func _portal(pos: Vector2) -> void:
 		c.game = game
 		c.position = pos
 		game.world.add_child(c))
+	t.start()
 
 
 func _physics_process(delta: float) -> void:

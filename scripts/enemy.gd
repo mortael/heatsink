@@ -40,10 +40,11 @@ func _physics_process(delta: float) -> void:
 		if rivets[i][0] <= 0.0:
 			rivets.remove_at(i)
 	_ai(delta)
-	velocity += knock
+	var k := knock
+	velocity += k
 	knock = knock.move_toward(Vector2.ZERO, 1800.0 * delta)
 	move_and_slide()
-	velocity -= knock
+	velocity -= k
 	queue_redraw()
 
 
