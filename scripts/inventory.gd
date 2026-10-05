@@ -72,7 +72,6 @@ func offer(n := 3) -> Array[String]:
 		result.append(pick)
 	while result.size() < n:
 		result.append("patch_kit")
-		break
 	return result
 
 

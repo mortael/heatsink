@@ -30,7 +30,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	age += delta
-	var life := FLARE_LIFE if flare else RANGE_TIME * speed_mult
+	var life := FLARE_LIFE if flare else RANGE_TIME # speed_mult alone stretches range
 	if age >= life:
 		queue_free()
 		return

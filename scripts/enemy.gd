@@ -100,7 +100,7 @@ func _tick_ignite(delta: float) -> void:
 		game.fx.ember(global_position + Vector2(randf_range(-radius, radius), randf_range(-radius, radius) * 0.5))
 	if _ignite_tick <= 0.0:
 		_ignite_tick += IGNITE_TICK
-		take_damage(IGNITE_DPS_PER_STACK * IGNITE_TICK * ignite_stacks, false, Vector2.ZERO, "ignite")
+		take_damage(IGNITE_DPS_PER_STACK * IGNITE_TICK * ignite_stacks, false, Vector2.ZERO, "ignite", last_depth) # keep the shard generation so Ignite kills respect the cascade cap
 	if ignite_time <= 0.0:
 		clear_ignite()
 
