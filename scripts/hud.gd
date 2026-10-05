@@ -11,6 +11,11 @@ var _chroma := 0.0
 var _banner := ""
 var _banner_t := 0.0
 var _sub := ""
+var _dim := 0.0
+
+
+func dim(seconds: float) -> void:
+	_dim = seconds
 
 
 func _ready() -> void:
@@ -46,6 +51,7 @@ func _process(delta: float) -> void:
 	_damage = maxf(0.0, _damage - d / 0.4)
 	_chroma = maxf(0.0, _chroma - d * 3.0)
 	_banner_t = maxf(0.0, _banner_t - d)
+	_dim = maxf(0.0, _dim - d)
 	view.queue_redraw()
 
 
@@ -71,6 +77,8 @@ func _draw_view() -> void:
 	var p: Player = game.player
 	var h := p.heat
 
+	if _dim > 0.0:
+		view.draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.2))
 	# Screen-edge tints: orange while Hot, red vignette on damage, white pulse on big vents.
 	if h.band == Heat.Band.HOT:
 		_edge_glow(Color(1.0, 0.55, 0.15), 0.15, 70.0)
@@ -88,6 +96,7 @@ func _draw_view() -> void:
 		if i < p.pips:
 			view.draw_rect(r.grow(-2), Color(0.8, 0.85, 0.9))
 	view.draw_string(font, Vector2(24, 52), "PLATING", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.7))
+	_draw_items(font)
 
 	# Heat gauge (bottom centre)
 	var gw := 440.0 + 24.0 * _gauge_pulse
@@ -124,7 +133,7 @@ func _draw_view() -> void:
 	view.draw_string(font, Vector2(gx - 64, gy - 8), "DASH", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.7))
 	var vx := gx + gw + 24
 	var vready := p.vent_cd <= 0.0
-	var vk := 1.0 - p.vent_cd / Player.VENT_COOLDOWN
+	var vk: float = 1.0 - p.vent_cd / game.inventory.vent_cooldown()
 	view.draw_arc(Vector2(vx + 12, gy + gh * 0.5), 11.0, -PI / 2, -PI / 2 + TAU * vk, 24, Color(1, 0.7, 0.3) if vready else Color(0.5, 0.4, 0.3), 4.0)
 	view.draw_string(font, Vector2(vx + 30, gy + gh * 0.5 + 5), "VENT" if vready else "%.1f" % p.vent_cd, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.9 if vready else 0.5))
 
@@ -150,6 +159,31 @@ func _draw_view() -> void:
 
 	if game.dead:
 		_draw_ledger(font, s)
+
+
+## Owned items as small keyword-coloured chips, then active Resonance and Fusions.
+func _draw_items(font: Font) -> void:
+	var inv: Inventory = game.inventory
+	var x := 24.0
+	var y := 62.0
+	for id in inv.owned:
+		var item: Dictionary = ItemDB.ITEMS[id]
+		var kc := ItemDB.keyword_color(item.keyword)
+		var words: PackedStringArray = item.name.split(" ")
+		var abbr: String = words[0].substr(0, 1) + (words[1].substr(0, 1) if words.size() > 1 else words[0].substr(1, 1))
+		var r := Rect2(x, y, 26, 22)
+		view.draw_rect(r, Color(0.08, 0.07, 0.06, 0.85))
+		view.draw_rect(r, kc, false, 1.5)
+		view.draw_string(font, Vector2(x, y + 16), abbr.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 26, 11, kc)
+		x += 30.0
+	var line := y + 40.0
+	for kw: String in ItemDB.RESONANCE:
+		if inv.resonance(kw):
+			view.draw_string(font, Vector2(24, line), "RESONANCE · %s" % kw.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, ItemDB.keyword_color(kw))
+			line += 15.0
+	for f in inv.fusions:
+		view.draw_string(font, Vector2(24, line), "FUSION · %s" % ItemDB.FUSIONS[f].name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.82, 0.3))
+		line += 15.0
 
 
 func _draw_ledger(font: Font, s: Vector2) -> void:

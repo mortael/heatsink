@@ -53,6 +53,13 @@ func vent() -> float:
 	return dumped
 
 
+func set_value(v: float) -> void:
+	if is_overheated():
+		return
+	value = clampf(v, 0.0, cap - 1.0)
+	_update_band()
+
+
 func tick(delta: float) -> void:
 	if is_overheated():
 		overheat_timer -= delta

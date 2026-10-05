@@ -22,6 +22,7 @@ var active := false
 var pending := 0
 var between := 0.0
 var clear_times: Array[float] = []
+var reward_pending := false
 
 
 func start_room() -> void:
@@ -82,7 +83,11 @@ func _physics_process(delta: float) -> void:
 	if between > 0.0:
 		between -= delta
 		if between <= 0.0:
-			start_room()
+			if reward_pending:
+				reward_pending = false
+				game.offer_reward()
+			else:
+				start_room()
 		return
 	if not active:
 		return
@@ -98,4 +103,5 @@ func _physics_process(delta: float) -> void:
 		game.on_room_cleared(room_time)
 		game.hud.banner("ROOM CLEAR", "%.1f s" % room_time)
 		Sfx.play("clear")
-		between = BETWEEN_ROOMS
+		reward_pending = true
+		between = 1.2
