@@ -33,7 +33,7 @@ func _ai(delta: float) -> void:
 		S.CHASE:
 			if to_p.length() > 1.0:
 				facing = to_p.normalized()
-			var desired := facing * SPEED + _separation() * SPEED * 1.2
+			var desired := (facing * SPEED + _separation().limit_length(1.0) * SPEED * 1.2).limit_length(SPEED)
 			velocity = velocity.lerp(desired, 0.15)
 			if to_p.length() < TRIGGER_RANGE and not game.dead:
 				state = S.WINDUP

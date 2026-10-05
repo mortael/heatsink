@@ -67,7 +67,8 @@ func _process(_delta: float) -> void:
 			await get_tree().process_frame
 			get_viewport().get_texture().get_image().save_png("%s/death_ledger.png" % shot_dir)
 		_report(p)
-		get_tree().quit()
+		# An active bot that never clears a room means the game loop is broken.
+		get_tree().quit(1 if not passive and game.director.clear_times.is_empty() else 0)
 
 
 func _bot(p: Player) -> void:

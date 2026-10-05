@@ -21,7 +21,6 @@ var rooms_cleared := 0
 
 func _ready() -> void:
 	_setup_input()
-	randomize()
 	Juice.reset()
 	get_tree().paused = false
 	inventory = Inventory.new()
@@ -108,8 +107,6 @@ func ledger_lines() -> Array:
 
 
 func _setup_input() -> void:
-	if InputMap.has_action("fire"):
-		return # already registered (scene reload)
 	_key_action("move_left", [KEY_A, KEY_LEFT])
 	_key_action("move_right", [KEY_D, KEY_RIGHT])
 	_key_action("move_up", [KEY_W, KEY_UP])
@@ -135,31 +132,34 @@ func _ensure(action: String) -> void:
 		InputMap.add_action(action, 0.25)
 
 
-func _key_action(action: String, keys: Array) -> void:
+## Each binding is added on its own, so a reload or a partly predefined InputMap never duplicates or skips one.
+func _bind(action: String, ev: InputEvent) -> void:
 	_ensure(action)
-	for k: Key in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = k
+	if not InputMap.action_has_event(action, ev):
 		InputMap.action_add_event(action, ev)
 
 
+func _key_action(action: String, keys: Array) -> void:
+	for k: Key in keys:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = k
+		_bind(action, ev)
+
+
 func _mouse_action(action: String, button: MouseButton) -> void:
-	_ensure(action)
 	var ev := InputEventMouseButton.new()
 	ev.button_index = button
-	InputMap.action_add_event(action, ev)
+	_bind(action, ev)
 
 
 func _axis_action(action: String, axis: JoyAxis, dir: float) -> void:
-	_ensure(action)
 	var ev := InputEventJoypadMotion.new()
 	ev.axis = axis
 	ev.axis_value = dir
-	InputMap.action_add_event(action, ev)
+	_bind(action, ev)
 
 
 func _button_action(action: String, button: JoyButton) -> void:
-	_ensure(action)
 	var ev := InputEventJoypadButton.new()
 	ev.button_index = button
-	InputMap.action_add_event(action, ev)
+	_bind(action, ev)
