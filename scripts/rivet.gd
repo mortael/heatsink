@@ -11,6 +11,8 @@ var overdrive := false
 var pierce := 0
 var ricochet := 0
 var life := 1.4
+var speed_mult := 1.0
+var ricocheted := false
 var _exclude: Array[RID] = []
 
 
@@ -23,7 +25,7 @@ func _physics_process(delta: float) -> void:
 	if life <= 0.0:
 		queue_free()
 		return
-	var remaining := SPEED * delta
+	var remaining := SPEED * speed_mult * delta
 	var space := get_world_2d().direct_space_state
 	var guard := 0
 	while remaining > 0.0 and guard < 4:
@@ -51,24 +53,32 @@ func _physics_process(delta: float) -> void:
 			ricochet -= 1
 			dir = dir.bounce(normal)
 			global_position += normal * 2.0
+			if not ricocheted and game.inventory.has("rebound_charge"):
+				pierce += 1
+			ricocheted = true
 			game.fx.sparks(global_position, normal, 5, C.RIVET_GOLD)
 			Sfx.play("ricochet", 0.0, -8.0)
 			continue
 		game.fx.sparks(global_position, normal, 3, C.STEEL)
+		game.inventory.on_wall_stop(global_position, normal)
 		queue_free()
 		return
 	queue_redraw()
 
 
 func _hit_enemy(e: Enemy) -> void:
-	var crit := randf() < Player.CRIT_CHANCE
+	var inv: Inventory = game.inventory
+	var crit := randf() < inv.crit_chance()
 	var dmg := DAMAGE * (2.0 if crit else 1.0)
+	if ricocheted and inv.has("rebound_charge"):
+		dmg *= 1.5
 	e.embed_rivet()
+	inv.on_rivet_hit(e, self, crit) # on-hit effects land before damage, so a killing hit still ignites
 	e.take_damage(dmg, crit, dir * 110.0, "rivet")
 
 
 func _draw() -> void:
-	var col := C.RIVET_GOLD if overdrive else Color(0.85, 0.88, 0.92)
+	var col := C.RIVET_GOLD if overdrive or ricocheted else Color(0.85, 0.88, 0.92)
 	var back := -dir * (22.0 if overdrive else 14.0)
 	draw_line(back, Vector2.ZERO, Color(col, 0.35), 5.0)
 	draw_line(back * 0.5, Vector2.ZERO, col, 3.0)

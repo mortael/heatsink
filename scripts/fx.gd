@@ -9,6 +9,7 @@ var parts: Array = [] # [pos, vel, life, max_life, shape, color, size, rot, spin
 var rings: Array = [] # [pos, radius, color, life, max_life]
 var texts: Array = [] # [pos, text, color, size, life, max_life]
 var portals: Array = [] # [pos, life, max_life]
+var arcs: Array = [] # [from, to, life, max_life]
 
 
 func _process(delta: float) -> void:
@@ -32,6 +33,10 @@ func _process(delta: float) -> void:
 		texts[i][0] += Vector2(0, -48.0) * delta
 		if texts[i][4] <= 0.0:
 			texts.remove_at(i)
+	for i in range(arcs.size() - 1, -1, -1):
+		arcs[i][2] -= delta
+		if arcs[i][2] <= 0.0:
+			arcs.remove_at(i)
 	for i in range(portals.size() - 1, -1, -1):
 		portals[i][1] -= delta
 		if portals[i][1] <= 0.0:
@@ -83,10 +88,20 @@ func ring(pos: Vector2, radius: float, color: Color, life: float) -> void:
 	rings.append([pos, radius, color, life, life])
 
 
-func number(pos: Vector2, value: float, crit: bool) -> void:
+func number(pos: Vector2, value: float, crit: bool, color := Color.WHITE, size := 18) -> void:
 	var txt := str(int(round(value))) + ("!" if crit else "")
-	var col := Color(1, 0.85, 0.2) if crit else Color(1, 1, 1)
-	texts.append([pos + Vector2(randf_range(-8, 8), 0), txt, col, 28 if crit else 18, 0.5, 0.5])
+	var col := Color(1, 0.85, 0.2) if crit else color
+	texts.append([pos + Vector2(randf_range(-8, 8), 0), txt, col, 28 if crit else size, 0.5, 0.5])
+
+
+## Ignite: rising orange teardrop embers.
+func ember(pos: Vector2) -> void:
+	_add(pos, Vector2(randf_range(-15, 15), randf_range(-70, -40)), randf_range(0.3, 0.5), "teardrop", Color(1, randf_range(0.4, 0.7), 0.15), randf_range(2.0, 3.0), 0.3)
+
+
+## Arc: jagged cyan-white polyline, redrawn with new jitter every frame.
+func arc(from: Vector2, to: Vector2, life := 0.12) -> void:
+	arcs.append([from, to, life, life])
 
 
 func portal(pos: Vector2, time: float) -> void:
@@ -99,6 +114,18 @@ func _draw() -> void:
 		var k: float = 1.0 - pt[1] / pt[2]
 		draw_circle(pt[0], 6.0 + 14.0 * k, Color(1, 0.45, 0.15, 0.15 + 0.25 * k))
 		draw_arc(pt[0], 20.0 - 6.0 * k, 0, TAU, 20, Color(1, 0.7, 0.35, 0.8), 2.0)
+	for a in arcs:
+		var from: Vector2 = a[0]
+		var to: Vector2 = a[1]
+		var k: float = a[2] / a[3]
+		var segs := maxi(3, int(from.distance_to(to) / 28.0))
+		var normal := (to - from).normalized().orthogonal()
+		var pts := PackedVector2Array([from])
+		for i in range(1, segs):
+			pts.append(from.lerp(to, float(i) / segs) + normal * randf_range(-10.0, 10.0))
+		pts.append(to)
+		draw_polyline(pts, Color(0.4, 0.9, 1.0, 0.35 * k), 7.0)
+		draw_polyline(pts, Color(0.85, 0.97, 1.0, k), 2.0)
 	for r in rings:
 		var k: float = 1.0 - r[3] / r[4]
 		var rad: float = r[1] * (0.25 + 0.75 * sqrt(k))

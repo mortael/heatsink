@@ -88,3 +88,4 @@ func _draw() -> void:
 	draw_arc(Vector2(radius * 0.35, 0), radius * 0.55, -0.9, 0.9, 8, flash_color(mouth), 2.5 + 2.0 * glow)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rivets(radius)
+	draw_status(radius)

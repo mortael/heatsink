@@ -15,6 +15,14 @@ var flash_frames := 0
 var flash_crit := false
 var knock := Vector2.ZERO
 var rivets: Array = [] # each: [time_left, angle]
+var last_depth := 0 # shard generation that last hit us (limits shard cascades)
+var ignite_stacks := 0
+var ignite_time := 0.0
+var _ignite_tick := 0.0
+
+const IGNITE_DURATION := 3.0
+const IGNITE_TICK := 0.5
+const IGNITE_DPS_PER_STACK := 4.0
 
 
 func _ready() -> void:
@@ -39,6 +47,9 @@ func _physics_process(delta: float) -> void:
 		rivets[i][0] -= delta
 		if rivets[i][0] <= 0.0:
 			rivets.remove_at(i)
+	_tick_ignite(delta)
+	if dead:
+		return
 	_ai(delta)
 	var k := knock
 	velocity += k
@@ -66,14 +77,46 @@ func clear_rivets() -> void:
 	rivets.clear()
 
 
-func take_damage(amount: float, crit: bool, push: Vector2, kind: String) -> void:
+func add_ignite(stacks: int, cap: int) -> void:
+	if dead or stacks <= 0:
+		return
+	if ignite_stacks == 0:
+		_ignite_tick = IGNITE_TICK
+	ignite_stacks = mini(cap, ignite_stacks + stacks)
+	ignite_time = IGNITE_DURATION
+
+
+func clear_ignite() -> void:
+	ignite_stacks = 0
+	ignite_time = 0.0
+
+
+func _tick_ignite(delta: float) -> void:
+	if ignite_stacks <= 0:
+		return
+	ignite_time -= delta
+	_ignite_tick -= delta
+	if randf() < 0.15 + 0.03 * ignite_stacks:
+		game.fx.ember(global_position + Vector2(randf_range(-radius, radius), randf_range(-radius, radius) * 0.5))
+	if _ignite_tick <= 0.0:
+		_ignite_tick += IGNITE_TICK
+		take_damage(IGNITE_DPS_PER_STACK * IGNITE_TICK * ignite_stacks, false, Vector2.ZERO, "ignite", last_depth) # keep the shard generation so Ignite kills respect the cascade cap
+	if ignite_time <= 0.0:
+		clear_ignite()
+
+
+func take_damage(amount: float, crit: bool, push: Vector2, kind: String, depth := 0) -> void:
 	if dead:
 		return
 	hp -= amount
-	flash_frames = 3
-	flash_crit = crit
+	last_depth = depth
 	knock += push
-	game.fx.number(global_position + Vector2(0, -radius - 6), amount, crit)
+	if kind == "ignite":
+		game.fx.number(global_position + Vector2(0, -radius - 6), amount, false, Color(1, 0.6, 0.25), 14)
+	else:
+		flash_frames = 3
+		flash_crit = crit
+		game.fx.number(global_position + Vector2(0, -radius - 6), amount, crit)
 	if kind == "rivet":
 		Sfx.play("hit", 0.0, -8.0)
 	if crit:
@@ -93,6 +136,7 @@ func _die() -> void:
 	game.fx.pop(global_position, Color(0.55, 0.38, 0.28))
 	Sfx.play_ramp("kill", -4.0)
 	Juice.hitstop(2)
+	game.inventory.on_kill(self)
 	game.on_enemy_killed(self)
 	queue_free()
 
@@ -117,6 +161,13 @@ func flash_color(base: Color) -> Color:
 		return base
 	var tint := Color(1, 0.95, 0.6) if flash_crit else Color.WHITE
 	return tint if flash_frames == 3 else base.lerp(tint, 0.5)
+
+
+## Status overlay drawn on top of the body: Ignite glow.
+func draw_status(r: float) -> void:
+	if ignite_stacks > 0:
+		var k := clampf(ignite_stacks / 10.0, 0.2, 1.0)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Color(1, 0.5, 0.12, 0.5 + 0.4 * k), 2.0 + 2.0 * k)
 
 
 func draw_rivets(r: float) -> void:

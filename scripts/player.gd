@@ -72,6 +72,8 @@ func _physics_process(delta: float) -> void:
 	if game.dead:
 		velocity = Vector2.ZERO
 		return
+	var inv: Inventory = game.inventory
+	heat.decay_rate = 12.0 * inv.heat_decay_mult()
 	heat.tick(delta)
 	fire_cd -= delta
 	vent_cd = maxf(0.0, vent_cd - delta)
@@ -81,7 +83,7 @@ func _physics_process(delta: float) -> void:
 		dash_recharge -= delta
 		if dash_recharge <= 0.0:
 			dash_charges += 1
-			dash_recharge = DASH_RECHARGE if dash_charges < DASH_MAX else 0.0
+			dash_recharge = DASH_RECHARGE * inv.dash_recharge_mult() if dash_charges < DASH_MAX else 0.0
 
 	var move := _move_input()
 	_update_aim()
@@ -146,7 +148,8 @@ func _vent_pressed() -> bool:
 
 
 func _fire() -> void:
-	fire_cd = FIRE_INTERVAL
+	var inv: Inventory = game.inventory
+	fire_cd = FIRE_INTERVAL * inv.fire_interval_mult()
 	var hot := heat.band == Heat.Band.HOT
 	var r := Rivet.new()
 	r.game = game
@@ -154,7 +157,8 @@ func _fire() -> void:
 	r.dir = aim_dir.rotated(randf_range(-0.025, 0.025))
 	r.overdrive = hot
 	r.pierce = 1 if hot else 0
-	r.ricochet = 1 if hot else 0
+	r.ricochet = inv.ricochets(hot)
+	r.speed_mult = inv.projectile_mult()
 	game.world.add_child(r)
 	heat.add(HEAT_PER_SHOT)
 	muzzle = 0.05
@@ -168,7 +172,7 @@ func _dash(move: Vector2) -> void:
 	dash_time = DASH_TIME
 	dash_charges -= 1
 	if dash_recharge <= 0.0:
-		dash_recharge = DASH_RECHARGE
+		dash_recharge = DASH_RECHARGE * game.inventory.dash_recharge_mult()
 	heat.quench(DASH_QUENCH)
 	Sfx.play("dash")
 
@@ -181,7 +185,7 @@ func _vent() -> void:
 		mult *= 0.5 # venting during lockout is allowed at half damage
 	else:
 		heat.vent()
-	vent_cd = VENT_COOLDOWN
+	vent_cd = game.inventory.vent_cooldown()
 	vents += 1
 	var radius := (2.5 + amount / 25.0) * C.TILE
 	var dmg := amount * 0.6 * mult
@@ -227,6 +231,7 @@ func _vent() -> void:
 	Juice.add_trauma(0.2 + 0.25 * amount / 100.0)
 	Sfx.play("vent", -6.0 + amount / 20.0)
 	game.hud.chromatic(amount)
+	game.inventory.on_vent(amount)
 
 
 func take_hit(amount: int, source: String) -> void:
@@ -258,6 +263,7 @@ func _on_band_changed(new_band: int, old_band: int) -> void:
 
 func _on_overheated() -> void:
 	Sfx.play("overheat")
+	game.inventory.on_overheat()
 	Juice.add_trauma(0.3)
 	game.fx.sparks(global_position, Vector2.UP, 16, C.HEAT_OVER)
 	game.hud.pulse_gauge()

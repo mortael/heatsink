@@ -8,6 +8,8 @@ var player: Player
 var camera: Camera2D
 var hud: Hud
 var director: Director
+var inventory: Inventory
+var picker: Picker
 
 var dead := false
 var kills := 0
@@ -20,6 +22,11 @@ var rooms_cleared := 0
 func _ready() -> void:
 	_setup_input()
 	Juice.reset()
+	get_tree().paused = false
+	inventory = Inventory.new()
+	inventory.game = self
+	add_child(inventory)
+	inventory.fusion_unlocked.connect(_on_fusion)
 	world = Node2D.new()
 	add_child(world)
 	room = Room.new()
@@ -43,7 +50,27 @@ func _ready() -> void:
 	director = Director.new()
 	director.game = self
 	add_child(director)
+	picker = Picker.new()
+	picker.game = self
+	add_child(picker)
+	picker.chosen.connect(_on_reward_chosen)
 	director.start_room()
+
+
+func offer_reward() -> void:
+	picker.open(inventory.offer(3))
+
+
+func _on_reward_chosen(id: String) -> void:
+	inventory.add(id)
+	director.start_room()
+
+
+func _on_fusion(id: String) -> void:
+	var f: Dictionary = ItemDB.FUSIONS[id]
+	hud.banner("FUSION: " + f.name.to_upper(), f.desc)
+	Sfx.play("fusion")
+	Juice.add_trauma(0.3)
 
 
 func _process(delta: float) -> void:

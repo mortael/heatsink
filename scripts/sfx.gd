@@ -81,6 +81,13 @@ func _build() -> void:
 		return sin(TAU * (3000.0 - 5000.0 * t) * t) * exp(-t * 30.0) * 0.3)
 	streams["portal"] = _gen(0.3, func(t: float, _n: float) -> float:
 		return sin(TAU * (300.0 + 600.0 * t) * t) * 0.12 * sin(PI * t / 0.3))
+	streams["zap"] = _gen(0.18, func(t: float, n: float) -> float:
+		var buzz := 1.0 if sin(TAU * 140.0 * t) > 0.0 else -1.0
+		return (n * 0.6 + buzz * 0.25) * exp(-t * 16.0) * (1.0 if int(t * 90.0) % 3 != 0 else 0.3))
+	streams["fusion"] = _gen(1.0, func(t: float, n: float) -> float:
+		var chord := sin(TAU * 220.0 * t) + sin(TAU * 277.0 * t) * 0.8 + sin(TAU * 330.0 * t) * 0.7 + sin(TAU * 440.0 * t) * 0.4
+		var anvil := sin(TAU * 1250.0 * t) * exp(-t * 9.0) * 0.6 + n * exp(-t * 30.0) * 0.4
+		return chord * 0.12 * exp(-t * 2.5) * minf(1.0, t * 30.0) + anvil)
 	streams["clear"] = _gen(0.6, func(t: float, _n: float) -> float:
 		var f := 523.0 if t < 0.15 else 784.0
 		return sin(TAU * f * t) * exp(-fmod(t, 0.15) * 6.0) * 0.3)

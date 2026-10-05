@@ -1,6 +1,7 @@
 extends Node
 ## Automated playtest: a simple bot plays the prototype and reports clear times and deaths.
-## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [passive]
+## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [mode] [shot_dir]
+## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test).
 
 var game: Node
 var frames := 0
@@ -13,6 +14,9 @@ var shot_dir := ""
 var last_shot := -1000
 var shots := 0
 var vent_shot_at := -1
+var all_items := false
+var picks := 0
+var picker_frames := 0
 
 
 func _ready() -> void:
@@ -21,18 +25,35 @@ func _ready() -> void:
 		max_frames = int(args[0]) * 60
 	if args.size() > 1:
 		seed(int(args[1]))
+	process_mode = Node.PROCESS_MODE_ALWAYS # keep running while the reward picker pauses the game
 	passive = args.size() > 2 and args[2] == "passive"
+	all_items = args.size() > 2 and args[2] == "allitems"
 	if args.size() > 3:
 		shot_dir = args[3]
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
+	if all_items:
+		for id: String in ItemDB.ITEMS:
+			game.inventory.add(id)
 
 
 func _process(_delta: float) -> void:
 	frames += 1
+	if game.get("picker") == null:
+		push_error("game failed to start")
+		get_tree().quit(1)
+		return
 	if report_done or game.player == null:
 		return
 	var p: Player = game.player
+	if game.picker.is_open:
+		picker_frames += 1
+		if picker_frames == 6 and shot_dir != "" and picks == 1:
+			get_viewport().get_texture().get_image().save_png("%s/picker.png" % shot_dir)
+		if picker_frames >= 10:
+			picker_frames = 0
+			_pick()
+		return
 	p.bot = true
 	_bot(p)
 	if p.heat.band == Heat.Band.HOT:
@@ -94,6 +115,16 @@ func _bot(p: Player) -> void:
 		p.bot_dash = true
 
 
+func _pick() -> void:
+	var inv: Inventory = game.inventory
+	var best := 0
+	for i in game.picker.options.size():
+		if inv.completes_fusion(game.picker.options[i]) != "":
+			best = i
+	picks += 1
+	game.picker.choose(best)
+
+
 func _report(p: Player) -> void:
 	var d: Director = game.director
 	var times: Array[float] = d.clear_times
@@ -110,6 +141,8 @@ func _report(p: Player) -> void:
 	print("kills: %d  pips left: %d/%d" % [game.kills, p.pips, Player.MAX_PIPS])
 	print("shots: %d  vents: %d  overheats: %d  reached Hot: %s" % [p.shots_fired, p.vents, p.heat.overheat_count, min_heat_seen_hot])
 	print("hit-stop frames total: %d" % Juice.total_hitstop_frames)
+	print("picks: %d  items: %s" % [picks, str(game.inventory.owned)])
+	print("fusions: %s" % str(game.inventory.fusions))
 	if game.dead:
 		print("ledger: %s" % str(game.ledger_lines()))
 

@@ -53,6 +53,14 @@ func vent() -> float:
 	return dumped
 
 
+func set_value(v: float) -> void:
+	if is_overheated():
+		return
+	value = clampf(v, 0.0, cap - 1.0)
+	_since_gain = 0.0 # a set value gets the normal decay delay
+	_update_band()
+
+
 func tick(delta: float) -> void:
 	if is_overheated():
 		overheat_timer -= delta
