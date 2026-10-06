@@ -71,6 +71,8 @@ func remove(id: String) -> void:
 
 ## Pick n distinct offers. Each slot rolls 40% from keywords you already own, 60% from the open pool.
 ## Slagged items never appear here; filter narrows the pool and exclude skips ids already on show.
+## An unfiltered offer pads empty slots with Patch Kits; a filtered one returns only matching items,
+## so it can come back short or empty.
 func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[String]:
 	var pool: Array[String] = []
 	for id: String in ItemDB.ITEMS:
@@ -91,7 +93,7 @@ func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[S
 		var pick: String = themed.pick_random() if not themed.is_empty() and randf() < 0.4 else pool.pick_random()
 		pool.erase(pick)
 		result.append(pick)
-	while result.size() < n:
+	while result.size() < n and not filter.is_valid():
 		result.append("patch_kit")
 	return result
 

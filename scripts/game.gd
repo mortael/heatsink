@@ -95,6 +95,11 @@ func take_door(door: Door) -> void:
 
 
 func _build_room(kind: String) -> void:
+	# Bank any Scrap still flying toward the player so leaving early never loses it.
+	for b in get_tree().get_nodes_in_group("scrap"):
+		if not b.is_queued_for_deletion():
+			add_scrap(b.value, false)
+			b.remove_from_group("scrap")
 	for c in world.get_children():
 		if c != player and c != fx:
 			c.queue_free()
@@ -216,7 +221,10 @@ func _give_reward() -> void:
 			_open_picker("reward", inventory.offer(3), "CHOOSE A SALVAGE")
 		"combat_conductor":
 			var conductors := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword == "conductor"
-			_open_picker("reward", inventory.offer(3, conductors), "CHOOSE A CONDUCTOR")
+			var opts := inventory.offer(3, conductors)
+			if opts.is_empty():
+				opts.append("patch_kit") # every Conductor is owned
+			_open_picker("reward", opts, "CHOOSE A CONDUCTOR")
 		_:
 			_open_doors()
 
@@ -317,6 +325,9 @@ func use_pedestal(p: Pedestal) -> void:
 			player.pips += 1
 			_buy_fx(p)
 		"reroll":
+			if not pedestals.any(func(q: Pedestal) -> bool: return q.kind == "item" and q.active and q.item_id != "patch_kit"):
+				hud.banner("NOTHING TO REROLL")
+				return
 			scrap -= p.price
 			_reroll_price += REROLL_STEP
 			p.price = _reroll_price
@@ -356,15 +367,9 @@ func use_pedestal(p: Pedestal) -> void:
 				Sfx.play("fusion", 2.0, -4.0)
 				var rare := func(id: String) -> bool: return ItemDB.ITEMS[id].rarity == "Rare"
 				var opts := inventory.offer(3, rare)
-				# Few Rares exist yet; fill the remaining cards from Uncommons.
-				if opts.has("patch_kit"):
-					var have := opts.filter(func(id: String) -> bool: return id != "patch_kit")
-					var unc := func(id: String) -> bool: return ItemDB.ITEMS[id].rarity == "Uncommon"
-					var typed: Array[String] = []
-					typed.assign(have)
-					typed.append_array(inventory.offer(3 - typed.size(), unc, typed))
-					opts = typed
-				_open_picker("coinflip", opts, "THE COIN LANDS EMBER-SIDE", "Choose a reward")
+				if opts.is_empty():
+					opts.append("patch_kit") # every Rare is owned
+				_open_picker("coinflip", opts, "THE COIN LANDS EMBER-SIDE", "Choose a Rare")
 			else:
 				Sfx.play("player_hit")
 				hud.damage_flash()
@@ -394,6 +399,8 @@ func _reroll_shop() -> void:
 		var want_conductor: bool = p.item_id != "patch_kit" and ItemDB.ITEMS[p.item_id].keyword == "conductor"
 		var f := func(id: String) -> bool: return (ItemDB.ITEMS[id].keyword == "conductor") == want_conductor
 		var pick: Array[String] = inventory.offer(1, f, shown)
+		if pick.is_empty():
+			continue # nothing new of this kind left: keep what is on show
 		shown.append(pick[0])
 		var pos: Vector2 = p.position
 		pedestals.erase(p)
@@ -402,39 +409,39 @@ func _reroll_shop() -> void:
 
 
 ## Crucible odds (GDD section 6): 50% upgrade a rarity, 35% transmute within the keyword, 15% Slagged.
+## Each roll only ever produces its own outcome; if that outcome has nothing left to give,
+## the Crucible refuses and you keep the item.
 func _feed_crucible(id: String) -> void:
 	var fed: Dictionary = ItemDB.ITEMS[id]
 	var rank: int = ItemDB.RARITY_RANK[fed.rarity]
 	var roll := randf()
-	var result := ""
-	var outcome := ""
-	if roll < 0.85:
-		var upgrade := roll < 0.5
-		var same_kw := func(o: String) -> bool: return o != id and ItemDB.ITEMS[o].keyword == fed.keyword
-		var higher := func(o: String) -> bool: return ItemDB.RARITY_RANK[ItemDB.ITEMS[o].rarity] > rank
-		var both := func(o: String) -> bool: return same_kw.call(o) and higher.call(o)
-		var tries: Array = [both, higher, same_kw] if upgrade else [same_kw, higher]
-		var skip: Array[String] = [id]
-		for f: Callable in tries:
-			var pick: Array[String] = inventory.offer(1, f, skip)
-			if pick[0] != "patch_kit":
-				result = pick[0]
-				outcome = "UPGRADED" if ItemDB.RARITY_RANK[ItemDB.ITEMS[result].rarity] > rank else "TRANSMUTED"
-				break
-	if result == "":
-		var slag: Array[String] = []
-		for o: String in ItemDB.ITEMS:
-			if ItemDB.is_slagged(o) and not inventory.owned.has(o):
-				slag.append(o)
-		if not slag.is_empty():
-			result = slag.pick_random()
-			outcome = "SLAGGED"
+	var outcome := "UPGRADED" if roll < 0.5 else ("TRANSMUTED" if roll < 0.85 else "SLAGGED")
+	var skip: Array[String] = [id]
+	var picks: Array[String] = []
+	match outcome:
+		"UPGRADED":
+			# Prefer the same keyword; any higher rarity still counts as an upgrade.
+			var same_higher := func(o: String) -> bool: return ItemDB.ITEMS[o].keyword == fed.keyword and ItemDB.RARITY_RANK[ItemDB.ITEMS[o].rarity] > rank
+			var higher := func(o: String) -> bool: return ItemDB.RARITY_RANK[ItemDB.ITEMS[o].rarity] > rank
+			picks = inventory.offer(1, same_higher, skip)
+			if picks.is_empty():
+				picks = inventory.offer(1, higher, skip)
+		"TRANSMUTED":
+			var same_kw := func(o: String) -> bool: return ItemDB.ITEMS[o].keyword == fed.keyword
+			picks = inventory.offer(1, same_kw, skip)
+		"SLAGGED":
+			for o: String in ItemDB.ITEMS:
+				if ItemDB.is_slagged(o) and not inventory.owned.has(o):
+					picks.append(o)
+			picks.shuffle()
 	for p in pedestals:
 		if p.kind == "crucible":
 			p.active = false
-	if result == "":
-		hud.banner("THE CRUCIBLE REFUSES", "Nothing left to make")
+	if picks.is_empty():
+		hud.banner("THE CRUCIBLE REFUSES", "It rolled %s but had nothing to give. You keep %s." % [outcome.to_lower(), fed.name])
+		Sfx.play("player_hit", 4.0, -8.0)
 		return
+	var result: String = picks[0]
 	inventory.remove(id)
 	inventory.add(result)
 	var into: Dictionary = ItemDB.ITEMS[result]

@@ -7,7 +7,8 @@ extends RefCounted
 ## Constraints from the GDD:
 ## - after 3 combat rooms in a row, at least one door is non-combat;
 ## - the same non-combat type is never offered twice in a row;
-## - the Scrapper is guaranteed between rooms 5 and 7, the Crucible Wager once per Stratum;
+## - the Scrapper is always on offer by room 7 and the Crucible Wager by room 10, as one door
+##   among the usual 2-3, so the safe route has both without taking away the choice;
 ## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run.
 
 const ROOMS := 12
@@ -69,15 +70,13 @@ func _roll_exits() -> Array[String]:
 	if next == ROOMS:
 		out.append("vault")
 		return out
-	# Forced picks keep the safe route's promises.
-	if next == 7 and not _used.has("shop"):
-		out.append("shop")
-		return out
-	if next == 10 and not _used.has("wager"):
-		out.append("wager")
-		return out
 	var count := 2 if rng.randf() < 0.5 else 3
 	var specials := _available_specials(next)
+	# Last chance for the shop or the Wager: it is always one of the doors.
+	var due := "shop" if next == 7 else ("wager" if next == 10 else "")
+	if specials.has(due):
+		out.append(due)
+		specials.erase(due)
 	if combat_streak() >= 3 and not specials.is_empty():
 		var s: String = specials[rng.randi_range(0, specials.size() - 1)]
 		out.append(s)

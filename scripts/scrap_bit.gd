@@ -13,6 +13,7 @@ var sweep := false
 func _ready() -> void:
 	z_index = 2
 	add_to_group("scrap")
+	sweep = not game.director.active # dropped by the room's last kill, after the clear sweep
 	vel = Vector2.from_angle(randf() * TAU) * randf_range(60.0, 160.0)
 
 
@@ -26,7 +27,8 @@ func _process(delta: float) -> void:
 	else:
 		vel *= pow(0.02, delta)
 	position += vel * delta
-	if to.length() < Player.RADIUS + 6.0:
+	if to.length() < Player.RADIUS + 6.0 and is_in_group("scrap"):
+		remove_from_group("scrap")
 		game.add_scrap(value, false)
 		Sfx.play("band", 12.0, -14.0)
 		queue_free()
