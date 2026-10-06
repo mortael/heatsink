@@ -280,7 +280,7 @@ func _setup_special(kind: String) -> void:
 			_pedestal("altar", Vector2(15 * t, 6.5 * t), "Stoke Altar", ["Heat cap rises to 120: 20 more Heat of Overdrive.", "!Costs 1 max Plating pip. Overheat lasts 1 s longer.", "Choose one: the other option goes cold."], Color(1.0, 0.45, 0.2))
 		"wager":
 			_pedestal("crucible", Vector2(9 * t, 6.5 * t), "The Crucible", ["Feed in one owned item:", "50%: it upgrades to a higher rarity", "35%: it transmutes to a same-keyword item", "!15%: it becomes Slagged"], Color(0.8, 0.45, 1.0))
-			_pedestal("coinflip", Vector2(15 * t, 6.5 * t), "Ember Coin", ["Stake 1 max Plating pip on a 60% flip.", "Win: choose 1 of 3 Rare-or-better items.", "!Lose: the pip is gone."], Color(1.0, 0.55, 0.25))
+			_pedestal("coinflip", Vector2(15 * t, 6.5 * t), "Ember Coin", ["Stake 1 max Plating pip on a 60% flip.", "Win: choose a Rare item you don't own.", "!Lose: the pip is gone."], Color(1.0, 0.55, 0.25))
 
 
 func _pedestal(kind: String, pos: Vector2, title: String, lines: Array[String], color: Color) -> Pedestal:
@@ -337,6 +337,9 @@ func use_pedestal(p: Pedestal) -> void:
 			player.pips = mini(player.pips + 2, player.max_pips)
 			_vault_choice(p)
 		"altar":
+			if inventory.stoked:
+				hud.banner("ALREADY STOKED", "The Altar has nothing more to give")
+				return
 			if player.max_pips <= 1:
 				hud.banner("NOT ENOUGH PLATING")
 				return
@@ -359,16 +362,17 @@ func use_pedestal(p: Pedestal) -> void:
 			if player.max_pips <= 1:
 				hud.banner("NOT ENOUGH PLATING")
 				return
+			var rare := func(id: String) -> bool: return ItemDB.ITEMS[id].rarity == "Rare"
+			if inventory.offer(1, rare).is_empty():
+				hud.banner("THE COIN WON'T FLIP", "You already own every Rare")
+				return
 			p.active = false
 			player.max_pips -= 1
 			player.pips = mini(player.pips, player.max_pips)
 			Juice.add_trauma(0.25)
 			if randf() < 0.6:
 				Sfx.play("fusion", 2.0, -4.0)
-				var rare := func(id: String) -> bool: return ItemDB.ITEMS[id].rarity == "Rare"
 				var opts := inventory.offer(3, rare)
-				if opts.is_empty():
-					opts.append("patch_kit") # every Rare is owned
 				_open_picker("coinflip", opts, "THE COIN LANDS EMBER-SIDE", "Choose a Rare")
 			else:
 				Sfx.play("player_hit")
