@@ -15,10 +15,13 @@ var flash_frames := 0
 var flash_crit := false
 var knock := Vector2.ZERO
 var rivets: Array = [] # each: [time_left, angle]
+var last_kind := "" # damage kind of the last hit (Hungry Coal counts Vent kills)
 var last_depth := 0 # shard generation that last hit us (limits shard cascades)
 var ignite_stacks := 0
 var ignite_time := 0.0
 var _ignite_tick := 0.0
+var _nav_wp := Vector2.ZERO
+var _nav_t := 0.0
 
 const IGNITE_DURATION := 3.0
 const IGNITE_TICK := 0.5
@@ -110,6 +113,7 @@ func take_damage(amount: float, crit: bool, push: Vector2, kind: String, depth :
 		return
 	hp -= amount
 	last_depth = depth
+	last_kind = kind
 	knock += push
 	if kind == "ignite":
 		game.fx.number(global_position + Vector2(0, -radius - 6), amount, false, Color(1, 0.6, 0.25), 14)
@@ -139,6 +143,27 @@ func _die() -> void:
 	game.inventory.on_kill(self)
 	game.on_enemy_killed(self)
 	queue_free()
+
+
+## Direction toward target: straight when the way is clear, otherwise along the room's tile path.
+## The path is refreshed a few times a second so packs don't all search every frame.
+func nav_dir(target: Vector2, delta: float) -> Vector2:
+	var room: Room = game.room
+	if room.has_los(global_position, target, radius * 0.8):
+		_nav_t = 0.0
+		return (target - global_position).normalized()
+	_nav_t -= delta
+	if _nav_t <= 0.0 or global_position.distance_to(_nav_wp) < 8.0:
+		_nav_t = 0.35
+		var route := room.path(global_position, target)
+		_nav_wp = route[0] if not route.is_empty() else target
+		# Skip ahead to the furthest waypoint we can already see.
+		for wp in route:
+			if room.has_los(global_position, wp, radius * 0.8):
+				_nav_wp = wp
+			else:
+				break
+	return (_nav_wp - global_position).normalized()
 
 
 ## Push away from neighbours so packs spread into a readable crowd.

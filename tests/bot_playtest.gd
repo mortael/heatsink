@@ -1,7 +1,9 @@
 extends Node
 ## Automated playtest: a simple bot plays the prototype and reports clear times and deaths.
 ## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [mode] [shot_dir]
-## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test).
+## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test),
+## "slagged" starts with the three Slagged items. Between fights the bot shops, rests, gambles
+## and walks through a random door, so a long run exercises the whole Stratum route.
 
 var game: Node
 var frames := 0
@@ -17,6 +19,14 @@ var vent_shot_at := -1
 var all_items := false
 var picks := 0
 var picker_frames := 0
+var slagged := false
+var plan: Array = [] # pedestals to use in the current room
+var plan_room := -1
+var door_pick := -1
+var used := {} # pedestal kind -> times used this run
+var room_shots := {} # name -> true once saved
+var room_seen_at := 0
+var room_seen := -1
 
 
 func _ready() -> void:
@@ -28,12 +38,13 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # keep running while the reward picker pauses the game
 	passive = args.size() > 2 and args[2] == "passive"
 	all_items = args.size() > 2 and args[2] == "allitems"
+	slagged = args.size() > 2 and args[2] == "slagged"
 	if args.size() > 3:
 		shot_dir = args[3]
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
-	if all_items:
-		for id: String in ItemDB.ITEMS:
+	for id: String in ItemDB.ITEMS:
+		if (all_items and not ItemDB.is_slagged(id)) or (slagged and ItemDB.is_slagged(id)):
 			game.inventory.add(id)
 
 
@@ -50,6 +61,8 @@ func _process(_delta: float) -> void:
 		picker_frames += 1
 		if picker_frames == 6 and shot_dir != "" and picks == 1:
 			get_viewport().get_texture().get_image().save_png("%s/picker.png" % shot_dir)
+		if picker_frames == 6 and shot_dir != "" and game.room_kind == "wager":
+			_save("wager_picker")
 		if picker_frames >= 10:
 			picker_frames = 0
 			_pick()
@@ -60,8 +73,13 @@ func _process(_delta: float) -> void:
 		min_heat_seen_hot = true
 	if shot_dir != "":
 		_maybe_shot(p)
-	if game.dead or frames >= max_frames:
+		_room_shot(p)
+	if game.dead or game.victory or frames >= max_frames:
 		report_done = true
+		if shot_dir != "" and game.victory:
+			for i in 90:
+				await get_tree().process_frame
+			_save("victory")
 		if shot_dir != "" and game.dead:
 			await get_tree().process_frame
 			await get_tree().process_frame
@@ -89,8 +107,25 @@ func _bot(p: Player) -> void:
 	var centre: Vector2 = game.room.center()
 	if nearest == null:
 		p.bot_fire = false
-		p.bot_move = (centre - p.global_position) / 200.0
+		if passive:
+			p.bot_move = Vector2.ZERO
+			return
+		_explore(p)
 		return
+	# Shoot the nearest enemy we can see; if walls hide them all, go find one.
+	var seen: Node2D = null
+	var sd := INF
+	for e in enemies:
+		var d: float = p.global_position.distance_to(e.global_position)
+		if d < sd and game.room.has_los(p.global_position, e.global_position, 3.0):
+			sd = d
+			seen = e
+	if seen == null:
+		p.bot_fire = false
+		_walk(p, nearest.global_position)
+		return
+	nearest = seen
+	nd = sd
 	var to_e := nearest.global_position - p.global_position
 	p.bot_aim = to_e
 	# Keep ~4 tiles away, strafe, and drift toward the centre to avoid corners.
@@ -115,6 +150,65 @@ func _bot(p: Player) -> void:
 		p.bot_dash = true
 
 
+## Between fights: use the room's pedestals, then walk to a door.
+func _explore(p: Player) -> void:
+	if game.run.index != plan_room:
+		plan_room = game.run.index
+		door_pick = -1
+		plan = _make_plan(p)
+	while not plan.is_empty() and (not is_instance_valid(plan[0]) or not plan[0].active or plan[0].price > game.scrap):
+		plan.pop_front()
+	if not plan.is_empty():
+		var ped: Pedestal = plan[0]
+		if ped.near:
+			p.bot_move = Vector2.ZERO
+			p.bot_interact = true
+			used[ped.kind] = used.get(ped.kind, 0) + 1
+			plan.pop_front()
+			return
+		_walk(p, ped.global_position)
+		return
+	var open: Array = game.doors.filter(func(d: Door) -> bool: return d.open)
+	if open.is_empty():
+		p.bot_move = Vector2.ZERO
+		return
+	if door_pick < 0 or door_pick >= open.size():
+		door_pick = randi() % open.size()
+	_walk(p, open[door_pick].global_position + Vector2(0, 2))
+
+
+func _make_plan(p: Player) -> Array:
+	var out: Array = []
+	var peds: Array = game.pedestals
+	match game.room_kind:
+		"shop":
+			var items := peds.filter(func(q: Pedestal) -> bool: return q.kind == "item")
+			items.sort_custom(func(a: Pedestal, b: Pedestal) -> bool: return a.price > b.price)
+			out.append_array(items)
+			if p.pips < p.max_pips:
+				out.push_front(peds.filter(func(q: Pedestal) -> bool: return q.kind == "repair")[0])
+		"vault":
+			var kind := "vault_repair" if p.pips < p.max_pips or p.max_pips <= 4 else "altar"
+			out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == kind))
+		"wager":
+			if not game.inventory.owned.is_empty():
+				out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == "crucible"))
+			if p.max_pips >= 5 and randf() < 0.5:
+				out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == "coinflip"))
+	return out
+
+
+func _walk(p: Player, target: Vector2) -> void:
+	var route: Array[Vector2] = game.room.path(p.global_position, target)
+	if route.is_empty():
+		p.bot_move = (target - p.global_position).normalized()
+		return
+	var wp: Vector2 = route[0]
+	if route.size() > 1 and p.global_position.distance_to(wp) < 10.0:
+		wp = route[1]
+	p.bot_move = (wp - p.global_position).normalized()
+
+
 func _pick() -> void:
 	var inv: Inventory = game.inventory
 	var best := 0
@@ -135,16 +229,48 @@ func _report(p: Player) -> void:
 		avg /= times.size()
 	print("=== BOT PLAYTEST ===")
 	print("sim time: %.1fs  died: %s" % [frames / 60.0, game.dead])
-	print("rooms cleared: %d  current room: %d" % [times.size(), d.room_index])
+	print("rooms cleared: %d  current room: %d" % [times.size(), game.run.index])
 	print("clear times: %s" % str(times.map(func(t: float) -> String: return "%.1f" % t)))
 	print("avg clear: %.1fs" % avg)
-	print("kills: %d  pips left: %d/%d" % [game.kills, p.pips, Player.MAX_PIPS])
+	print("kills: %d  pips left: %d/%d" % [game.kills, p.pips, p.max_pips])
 	print("shots: %d  vents: %d  overheats: %d  reached Hot: %s" % [p.shots_fired, p.vents, p.heat.overheat_count, min_heat_seen_hot])
 	print("hit-stop frames total: %d" % Juice.total_hitstop_frames)
 	print("picks: %d  items: %s" % [picks, str(game.inventory.owned)])
 	print("fusions: %s" % str(game.inventory.fusions))
+	print("route: %s" % str(game.run.visited))
+	print("scrap: %d  max pips: %d  used: %s  victory: %s" % [game.scrap, p.max_pips, str(used), game.victory])
+	var cursed: Array = game.inventory.owned.filter(func(id: String) -> bool: return ItemDB.is_slagged(id))
+	if not cursed.is_empty():
+		print("slagged: %s  absolution: %s  absolved: %s" % [str(cursed), str(game.inventory.absolution), str(game.inventory.absolved_ids)])
 	if game.dead:
 		print("ledger: %s" % str(game.ledger_lines()))
+	var left := get_tree().get_nodes_in_group("enemies")
+	if not left.is_empty():
+		print("enemies left: %d  first at %s  player at %s  pending portals: %d" % [left.size(), str(left[0].global_position), str(p.global_position), game.director.pending])
+
+
+## One screenshot per room type (shortly after entering), plus the first open doors.
+func _room_shot(p: Player) -> void:
+	if game.run.index != room_seen:
+		room_seen = game.run.index
+		room_seen_at = frames
+	var kind: String = game.room_kind
+	if frames - room_seen_at == 50 and not RunMap.is_combat(kind):
+		_save(kind)
+	if RunMap.is_combat(kind) and not game.doors.is_empty() and game.doors[0].open and game.doors.size() >= 2 and not room_shots.has("doors"):
+		if p.global_position.y < 7.0 * C.TILE:
+			_save("doors")
+	# Stand next to a pedestal long enough to see its card.
+	for ped: Pedestal in game.pedestals:
+		if ped.near and ped.kind == "item" and not room_shots.has("shop_card"):
+			_save("shop_card")
+
+
+func _save(name: String) -> void:
+	if room_shots.has(name):
+		return
+	room_shots[name] = true
+	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [shot_dir, name])
 
 
 func _maybe_shot(p: Player) -> void:

@@ -5,6 +5,7 @@ extends Node
 
 signal changed
 signal fusion_unlocked(id: String)
+signal absolved(id: String)
 
 const SHARD_DEPTH_CAP := 2 # shards spawned by shard kills stop cascading after this
 
@@ -12,6 +13,9 @@ var game: Node
 var owned: Array[String] = []
 var fusions: Array[String] = []
 var proc_bonus := 0.0
+var stoked := false # Stoke Altar: Heat cap 120, Overheat +1 s
+var absolution := {} # slagged id -> progress toward its Absolution goal
+var absolved_ids: Array[String] = []
 var _static_hits := 0
 
 
@@ -22,7 +26,7 @@ func has(id: String) -> bool:
 func count_keyword(kw: String) -> int:
 	var n := 0
 	for id in owned:
-		if ItemDB.ITEMS[id].keyword == kw:
+		if ItemDB.ITEMS[id].keyword == kw and kw != "slagged":
 			n += 1
 	return n
 
@@ -33,12 +37,14 @@ func resonance(kw: String) -> bool:
 
 func add(id: String) -> void:
 	if id == "patch_kit":
-		game.player.pips = mini(game.player.pips + 1, Player.MAX_PIPS)
+		game.player.pips = mini(game.player.pips + 1, game.player.max_pips)
 		changed.emit()
 		return
 	if owned.has(id):
 		return
 	owned.append(id)
+	if ItemDB.is_slagged(id):
+		absolution[id] = 0.0
 	for f: String in ItemDB.FUSIONS:
 		if fusions.has(f):
 			continue
@@ -52,12 +58,27 @@ func add(id: String) -> void:
 	changed.emit()
 
 
+## Drops an item (fed to the Crucible). Fusions that lose an ingredient go with it.
+func remove(id: String) -> void:
+	owned.erase(id)
+	absolution.erase(id)
+	absolved_ids.erase(id)
+	for f in fusions.duplicate():
+		if ItemDB.FUSIONS[f].recipe.has(id):
+			fusions.erase(f)
+	changed.emit()
+
+
 ## Pick n distinct offers. Each slot rolls 40% from keywords you already own, 60% from the open pool.
-func offer(n := 3) -> Array[String]:
+## Slagged items never appear here; filter narrows the pool and exclude skips ids already on show.
+func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[String]:
 	var pool: Array[String] = []
 	for id: String in ItemDB.ITEMS:
-		if not owned.has(id):
-			pool.append(id)
+		if owned.has(id) or exclude.has(id) or ItemDB.is_slagged(id):
+			continue
+		if filter.is_valid() and not filter.call(id):
+			continue
+		pool.append(id)
 	var result: Array[String] = []
 	for i in n:
 		if pool.is_empty():
@@ -114,7 +135,66 @@ func projectile_mult() -> float:
 
 
 func heat_decay_mult() -> float:
+	if cursed("hungry_coal"):
+		return 0.0
 	return 1.3 if has("heat_exchanger") else 1.0
+
+
+## True while a Slagged item's drawback is still in force.
+func cursed(id: String) -> bool:
+	return owned.has(id) and ItemDB.is_slagged(id) and not absolved_ids.has(id)
+
+
+func extra_projectiles() -> int:
+	return 2 if has("brittle_crown") else 0
+
+
+func vent_damage_mult() -> float:
+	return 3.0 if has("hungry_coal") else 1.0
+
+
+func hot_at() -> float:
+	return 60.0 if has("feral_valve") else Heat.HOT_AT
+
+
+func overheat_time() -> float:
+	var t := 4.0 if cursed("feral_valve") else Heat.OVERHEAT_TIME
+	return t + (1.0 if stoked else 0.0)
+
+
+func hit_cost(amount: int, hot: bool) -> int:
+	return 3 if hot and cursed("brittle_crown") else amount
+
+
+## Lines for the Death Ledger: every risk the player accepted that is still live.
+func active_risks() -> Array[String]:
+	var out: Array[String] = []
+	for id in owned:
+		if cursed(id):
+			out.append("%s: %s" % [ItemDB.ITEMS[id].name, ItemDB.ITEMS[id].drawback])
+	if stoked:
+		out.append("Stoke Altar: Overheat lasts 1 s longer")
+	return out
+
+
+func _process(delta: float) -> void:
+	if cursed("feral_valve") and game.player != null and game.player.heat.band == Heat.Band.HOT and not game.dead:
+		_progress("feral_valve", delta)
+
+
+func on_room_clear(clean: bool) -> void:
+	if cursed("brittle_crown"):
+		if clean:
+			_progress("brittle_crown", 1.0)
+		else:
+			absolution["brittle_crown"] = 0.0
+
+
+func _progress(id: String, amount: float) -> void:
+	absolution[id] = absolution.get(id, 0.0) + amount
+	if absolution[id] >= ItemDB.ITEMS[id].goal:
+		absolved_ids.append(id)
+		absolved.emit(id)
 
 
 func dash_recharge_mult() -> float:
@@ -180,6 +260,8 @@ func _apply_on_hit(e: Enemy, hot: bool) -> void:
 
 func on_kill(e: Enemy) -> void:
 	var pos := e.global_position
+	if e.last_kind == "vent" and cursed("hungry_coal"):
+		_progress("hungry_coal", 1.0)
 	if has("tinder_rounds") and e.ignite_stacks > 1:
 		var share := e.ignite_stacks / 2
 		game.fx.ring(pos, 1.5 * C.TILE, Color(1, 0.5, 0.15, 0.8), 0.2)

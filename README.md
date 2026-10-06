@@ -1,6 +1,6 @@
 # HEATSINK prototype
 
-Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, Clinker fodder, one hand-made room with endless waves, and a pick-1-of-3 item reward after every room.
+Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, Clinker fodder, items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, a shop, a rest room and a gamble room.
 
 ## Run it
 
@@ -17,6 +17,7 @@ Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, Cl
 | Fire (hold) | Left mouse | Right trigger |
 | Dash | Space / Shift | Left bumper |
 | Vent | Right mouse / Q | Left trigger |
+| Use (shop, altar, crucible) | E / F | A |
 | Restart after death | R | Start |
 
 ## What to try
@@ -37,6 +38,19 @@ After each room you pick 1 of 3 salvage cards. There are 13 items across the thr
 
 Cards tell you when a pick unlocks Resonance or completes a Fusion.
 
+## The Stratum route (vertical slice step 2)
+
+A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen shows where you are.
+
+- After a fight, 2 or 3 doors open in the top wall. Each door shows what's behind it before you commit: a **Salvage** fight (pick 1 of 3 items), a **Conductor** fight (pick 1 of 3 Conductors), a **Scrap Cache** fight (+25 Scrap), or a room with no enemies.
+- **Scrap** comes from every cleared fight (8–15) and from Clinker drops.
+- **Scrapper (shop):** 4 items (one is always a Conductor), a 1-pip repair for 40, and a reroll for 15 that costs 10 more each time. Always offered between rooms 5 and 7.
+- **Crucible Wager:** feed in an item for 50% upgrade / 35% transmute / 15% Slagged, or stake 1 max Plating pip on a 60% coin flip for a Rare pick. Offered once per Stratum.
+- **Cooling Vault:** repair 2 pips, or take the Stoke Altar (−1 max pip, Heat cap 120, Overheat +1 s). Always right before the Gate, sometimes once mid-run too.
+- **Slagged items** (Brittle Crown, Hungry Coal, Feral Valve) are strong with a drawback printed in red. Finish the Absolution shown on the HUD and the drawback goes away.
+- Room layouts come from 8 hand-made templates, each mirrored into 4 variants.
+- The **Foundry Gate** is a tougher 3-wave fight that stands in for the Stratum boss until bosses exist.
+
 ## Layout
 
 | Path | What it is |
@@ -51,13 +65,18 @@ Cards tell you when a pick unlocks Resonance or completes a Fusion.
 | `scripts/item_db.gd` | Item, Resonance and Fusion data |
 | `scripts/inventory.gd` | Owned items, offers, and the trigger hooks that give items their behaviour |
 | `scripts/shard.gd` | Shrapnel shards, homing embers and Firestorm flares |
-| `scripts/picker.gd` | Pick-1-of-3 reward screen |
+| `scripts/picker.gd` | Pick-1-of-N card screen for rewards, the Crucible and the coin flip |
+| `scripts/run_map.gd` | The Stratum route: room types and door rolls with the GDD's constraints |
+| `scripts/room.gd`, `scripts/layouts.gd` | Room built from a layout template, plus pathing and line-of-sight helpers |
+| `scripts/door.gd` | Doors that preview the next room |
+| `scripts/pedestal.gd` | Shop items, repairs, altars and the Crucible |
+| `scripts/scrap_bit.gd` | Scrap pickups |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 
 Automated playtest (headless):
 
 ```
-godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 180 1 x
+godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 x
 ```
 
-Use `allitems` instead of `x` to start with every item as a stress test.
+Use `allitems` instead of `x` to start with every item as a stress test, or `slagged` to start with the three Slagged items. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.

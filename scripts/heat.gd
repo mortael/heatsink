@@ -15,6 +15,8 @@ const RESET_AFTER_OVERHEAT := 50.0
 
 var value := 0.0
 var cap := 100.0
+var hot_at := HOT_AT # Feral Valve lowers this
+var overheat_time := OVERHEAT_TIME
 var decay_rate := 12.0
 var decay_delay := 1.0
 var band: int = Band.COLD
@@ -81,7 +83,7 @@ func band_name() -> String:
 
 
 func _overheat() -> void:
-	overheat_timer = OVERHEAT_TIME
+	overheat_timer = overheat_time
 	overheat_count += 1
 	var old := band
 	band = Band.OVERHEAT
@@ -91,7 +93,7 @@ func _overheat() -> void:
 
 func _update_band() -> void:
 	var b: int = Band.COLD
-	if value >= HOT_AT:
+	if value >= hot_at:
 		b = Band.HOT
 	elif value >= WARM_AT:
 		b = Band.WARM
