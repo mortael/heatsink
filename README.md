@@ -44,7 +44,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 
 - After a fight, 2 or 3 doors open in the top wall. Each door shows what's behind it before you commit: a **Salvage** fight (pick 1 of 3 items), a **Conductor** fight (pick 1 of 3 Conductors), a **Scrap Cache** fight (+25 Scrap), or a room with no enemies.
 - **Scrap** comes from every cleared fight (8–15) and from Clinker drops.
-- **Scrapper (shop):** 4 items (one is always a Conductor), a 1-pip repair for 40, and a reroll for 15 that costs 10 more each time. Always offered between rooms 5 and 7.
+- **Scrapper (shop):** 4 items (one is always a Conductor), a 1-pip repair for 40, and a reroll for 15 that costs 10 more each time. Offered from room 5, and always one of the doors by room 7.
 - **Crucible Wager:** feed in an item for 50% upgrade / 35% transmute / 15% Slagged, or stake 1 max Plating pip on a 60% coin flip for a Rare pick. Always one of the doors by room 10.
 - **Cooling Vault:** repair 2 pips, or take the Stoke Altar (−1 max pip, Heat cap 120, Overheat +1 s). Always right before the Gate, sometimes once mid-run too.
 - **Slagged items** (Brittle Crown, Hungry Coal, Feral Valve) are strong with a drawback printed in red. Finish the Absolution shown on the HUD and the drawback goes away.
