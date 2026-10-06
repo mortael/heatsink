@@ -28,6 +28,7 @@ const HIT_INVULN := 1.0
 
 var game: Node
 var heat := Heat.new()
+var max_pips := MAX_PIPS # Altars and Wager stakes spend these
 var pips := MAX_PIPS
 var aim_dir := Vector2.RIGHT
 var fire_cd := 0.0
@@ -48,6 +49,7 @@ var bot_aim := Vector2.RIGHT
 var bot_fire := false
 var bot_dash := false
 var bot_vent := false
+var bot_interact := false
 
 
 func _ready() -> void:
@@ -74,6 +76,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var inv: Inventory = game.inventory
 	heat.decay_rate = 12.0 * inv.heat_decay_mult()
+	heat.hot_at = inv.hot_at()
+	heat.overheat_time = inv.overheat_time()
 	heat.tick(delta)
 	fire_cd -= delta
 	vent_cd = maxf(0.0, vent_cd - delta)
@@ -147,6 +151,14 @@ func _vent_pressed() -> bool:
 	return Input.is_action_just_pressed("vent")
 
 
+func interact_pressed() -> bool:
+	if bot:
+		var i := bot_interact
+		bot_interact = false
+		return i
+	return Input.is_action_just_pressed("interact")
+
+
 func _fire() -> void:
 	var inv: Inventory = game.inventory
 	fire_cd = FIRE_INTERVAL * inv.fire_interval_mult()
@@ -160,6 +172,17 @@ func _fire() -> void:
 	r.ricochet = inv.ricochets(hot)
 	r.speed_mult = inv.projectile_mult()
 	game.world.add_child(r)
+	for k in inv.extra_projectiles():
+		var side := (k / 2 + 1) * (1 if k % 2 == 0 else -1)
+		var extra := Rivet.new()
+		extra.game = game
+		extra.position = r.position
+		extra.dir = r.dir.rotated(0.12 * side)
+		extra.overdrive = hot
+		extra.pierce = r.pierce
+		extra.ricochet = r.ricochet
+		extra.speed_mult = r.speed_mult
+		game.world.add_child(extra)
 	heat.add(HEAT_PER_SHOT)
 	muzzle = 0.05
 	shots_fired += 1
@@ -188,7 +211,7 @@ func _vent() -> void:
 	vent_cd = game.inventory.vent_cooldown()
 	vents += 1
 	var radius := (2.5 + amount / 25.0) * C.TILE
-	var dmg := amount * 0.6 * mult
+	var dmg: float = amount * 0.6 * mult * game.inventory.vent_damage_mult()
 
 	var enemies := get_tree().get_nodes_in_group("enemies")
 	# Snapshot rivet bursts before anything dies.
@@ -239,7 +262,9 @@ func take_hit(amount: int, source: String) -> void:
 		return
 	if heat.is_overheated():
 		amount += 1
+	amount = game.inventory.hit_cost(amount, heat.band == Heat.Band.HOT)
 	pips -= amount
+	game.took_damage_this_room = true
 	invuln = HIT_INVULN
 	game.last_hit_source = source
 	game.last_hit_band = heat.band_name()
@@ -275,10 +300,10 @@ func _draw() -> void:
 	var core := C.HEAT_COLD
 	if heat.is_overheated():
 		core = C.HEAT_OVER if int(Time.get_ticks_msec() / 80) % 2 == 0 else Color(0.3, 0.05, 0.05)
-	elif heat.value < Heat.HOT_AT:
-		core = C.HEAT_COLD.lerp(C.HEAT_WARM, heat.value / Heat.HOT_AT)
+	elif heat.value < heat.hot_at:
+		core = C.HEAT_COLD.lerp(C.HEAT_WARM, heat.value / heat.hot_at)
 	else:
-		core = C.HEAT_WARM.lerp(C.HEAT_HOT, (heat.value - Heat.HOT_AT) / 20.0)
+		core = C.HEAT_WARM.lerp(C.HEAT_HOT, clampf((heat.value - heat.hot_at) / 20.0, 0.0, 1.0))
 	# Hot glow
 	if heat.band == Heat.Band.HOT:
 		draw_circle(Vector2.ZERO, RADIUS + 9.0, Color(1, 0.6, 0.2, 0.18 * a))
