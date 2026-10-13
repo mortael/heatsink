@@ -2,6 +2,15 @@
 
 Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, three enemies (Clinker, Linesman, Forgewarden), items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
 
+## Download a build
+
+Every merge to `main` builds the game on GitHub (`.github/workflows/release.yml`):
+
+- **Play in the browser:** https://mortael.github.io/heatsink/
+- **Windows:** grab `HEATSINK-windows.zip` from the latest [Release](https://github.com/mortael/heatsink/releases/latest), unzip and run `HEATSINK.exe`. It is unsigned, so Windows SmartScreen may ask you to click **More info → Run anyway**.
+
+The export settings live in `export_presets.cfg`. The Web build is single-threaded so it runs on GitHub Pages, which can't send the cross-origin isolation headers threaded builds need.
+
 ## Run it
 
 1. Install Godot 4.5.1 (standard build, not .NET).
