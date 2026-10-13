@@ -3,6 +3,8 @@ extends Node
 ## Encounter director for combat rooms (GDD section 6).
 ## Room budget TP = 8 + 2 x room index. Unit costs: Clinker 1, Linesman 4, Forgewarden 12.
 ## Waves mix at most one support role with fodder, and at least 40% of each wave's TP is fodder.
+## Elite waves follow the Forgewarden's own profile instead (GDD section 7): it always arrives
+## with 4-6 Clinkers, which is below 40% of its 12 TP by design.
 ## The next wave arrives when less than 25% of the current wave's TP remains, or after 8 s.
 ## Portals warn 0.8 s ahead, and nothing spawns within 3 tiles of the player.
 ## Elite rooms lead with a Forgewarden, 4-6 Clinkers and sometimes a Linesman.
@@ -45,7 +47,7 @@ func _plan(kind: String) -> Array:
 			var lead: Array = ["forgewarden"]
 			for i in randi_range(4, 6):
 				lead.append("clinker")
-			if room_index >= 5 and randf() < 0.5:
+			if room_index >= LINESMAN_FROM and randf() < 0.5:
 				lead.append("linesman")
 			out.append(lead)
 			out.append(_fodder(maxi(4, (budget - _cost(lead)) / 2)))
@@ -57,7 +59,8 @@ func _plan(kind: String) -> Array:
 			last.append_array(_fodder(6))
 			out.append(last)
 		_:
-			var n := 1 if room_index == 1 else (2 if room_index < 4 else 3)
+			# 2 waves until room 6 keeps waves at 7+ TP, enough to carry a Linesman from room 3.
+			var n := 1 if room_index == 1 else (2 if room_index < 7 else 3)
 			for i in n:
 				out.append(_mixed(budget / n + (1 if i < budget % n else 0)))
 	return out
@@ -68,7 +71,7 @@ func _mixed(tp: int) -> Array:
 	var units: Array = []
 	if room_index >= LINESMAN_FROM:
 		var lines := 0
-		if tp >= 8 and randf() < 0.65:
+		if tp >= 7 and randf() < 0.65: # 4 TP Linesman + 3 Clinkers keeps 40% fodder
 			lines = 1
 		if tp >= 14 and room_index >= 7 and randf() < 0.5:
 			lines = 2

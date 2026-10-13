@@ -7,6 +7,7 @@ const RADIUS := 0.7 * C.TILE
 
 var game: Node
 var life := LIFE
+var burned := false # each patch costs at most 1 pip
 
 
 func _ready() -> void:
@@ -19,7 +20,8 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	var p: Player = game.player
-	if not game.dead and p.global_position.distance_to(global_position) < RADIUS + Player.RADIUS * 0.5 and p.dash_time <= 0.0:
+	if not burned and not game.dead and not p.is_invulnerable() and p.global_position.distance_to(global_position) < RADIUS + Player.RADIUS * 0.5 and p.dash_time <= 0.0:
+		burned = true
 		p.take_hit(1, "Forgewarden · Molten floor")
 	queue_redraw()
 

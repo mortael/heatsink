@@ -127,7 +127,7 @@ const TEMPER := {
 	"splinter_heads": "5 shards per wall stop (was 3).",
 	"feedback_coil": "Vent arcs hit 5 enemies for 14 dmg.",
 	"static_rivets": "Arcs every 3rd rivet hit (was every 5th).",
-	"bank_shot": "Rivets always ricochet twice.",
+	"bank_shot": "+2 ricochets instead of +1 (3 while Hot).",
 	"rebound_charge": "After a ricochet: +100% damage and pierce 2 more.",
 }
 const TEMPER_COST := 1

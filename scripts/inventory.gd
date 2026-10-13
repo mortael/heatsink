@@ -31,6 +31,9 @@ func count_keyword(kw: String) -> int:
 	for id in owned:
 		if ItemDB.ITEMS[id].keyword == kw and kw != "slagged":
 			n += 1
+	for id: String in forged.values():
+		if not owned.has(id) and ItemDB.ITEMS[id].keyword == kw:
+			n += 1 # a Forced Fusion's stand-in counts toward Resonance
 	return n
 
 
@@ -68,8 +71,8 @@ func remove(id: String) -> void:
 	absolution.erase(id)
 	absolved_ids.erase(id)
 	for f in fusions.duplicate():
-		if ItemDB.FUSIONS[f].recipe.has(id):
-			fusions.erase(f)
+		if ItemDB.FUSIONS[f].recipe.has(id) and forged.get(f, "") != id:
+			fusions.erase(f) # a Forced Fusion keeps its paid-for stand-in
 			forged.erase(f)
 	changed.emit()
 
@@ -107,7 +110,7 @@ func forgeable() -> Array[String]:
 func _missing(f: String) -> Array[String]:
 	var out: Array[String] = []
 	for part: String in ItemDB.FUSIONS[f].recipe:
-		if not owned.has(part):
+		if not owned.has(part) and not forged.values().has(part):
 			out.append(part)
 	return out
 

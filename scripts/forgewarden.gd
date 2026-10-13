@@ -43,6 +43,7 @@ var next_attack := "hammer"
 var target := Vector2.ZERO
 var leap_from := Vector2.ZERO
 var ring_hit := false
+var breath_hit := false
 var _molten_t := 0.0
 
 
@@ -76,13 +77,12 @@ func _ai(delta: float) -> void:
 			velocity = velocity.move_toward(Vector2.ZERO, 900.0 * delta)
 			_turn_toward(to_p, TURN_RATE * 2.0 * delta)
 			if t > AIM_LOCK:
-				target = p.global_position
+				target = _landing(p.global_position) # the circle always shows where it will really land
 			if t <= 0.0:
-				target = _landing(target)
 				leap_from = global_position
 				state = S.LEAP
 				t = LEAP_TIME
-				collision_mask = 0 # the leap clears low cover
+				collision_mask = 0 # _landing already checked the flight path is clear of walls
 		S.LEAP:
 			var k := 1.0 - maxf(t, 0.0) / LEAP_TIME
 			var dest := leap_from.lerp(target, k)
@@ -108,10 +108,12 @@ func _ai(delta: float) -> void:
 				state = S.BREATH
 				t = BREATH
 				_molten_t = 0.0
+				breath_hit = false
 				Sfx.play("vent", -10.0, -2.0)
 		S.BREATH:
 			velocity = Vector2.ZERO
-			if _in_cone(p.global_position, CONE_REACH) and not game.dead:
+			if not breath_hit and _in_cone(p.global_position, CONE_REACH) and not game.dead and not p.is_invulnerable():
+				breath_hit = true # one hit per breath
 				p.take_hit(2, "Forgewarden · Bellows Breath")
 			if randf() < 0.9:
 				var a := randf_range(-CONE_HALF, CONE_HALF)
@@ -134,7 +136,7 @@ func _start_attack() -> void:
 	if next_attack == "hammer":
 		state = S.RAISE
 		t = RAISE
-		target = game.player.global_position
+		target = _landing(game.player.global_position)
 		next_attack = "breath"
 		Sfx.play("windup", -7.0, -6.0)
 	else:
@@ -144,12 +146,13 @@ func _start_attack() -> void:
 		Sfx.play("hiss", 0.0, -6.0)
 
 
-## Where the leap lands: the locked target, pulled back toward us until the body fits.
+## Where the leap lands: the target, pulled back toward us until the body fits there
+## and the flight path is clear of walls. A player behind cover gets a slam in front of it.
 func _landing(at: Vector2) -> Vector2:
 	var room: Room = game.room
 	for i in 12:
 		var cand := at.lerp(global_position, i / 11.0)
-		if room.is_open(cand, radius + 2.0):
+		if room.is_open(cand, radius + 2.0) and room.has_los(global_position, cand, radius):
 			return cand
 	return global_position
 

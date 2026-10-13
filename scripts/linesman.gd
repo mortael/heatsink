@@ -27,6 +27,7 @@ var t := 0.0
 var tether: int = T.IDLE
 var tether_t := 1.5 # first cast comes quickly so the room teaches the beam early
 var partner: Enemy = null
+var beam_hit := false
 var hop_dir := Vector2.ZERO
 var hop_cd := 0.0
 var spot := Vector2.ZERO
@@ -142,13 +143,15 @@ func _tick_tether(delta: float) -> void:
 			if tether_t <= 0.0:
 				tether = T.BEAM
 				tether_t = TETHER_BEAM
+				beam_hit = false
 				Sfx.play("beam", 0.0, -8.0)
 		T.BEAM:
 			tether_t -= delta
 			var p: Player = game.player
 			var c := Geometry2D.get_closest_point_to_segment(p.global_position, global_position, partner.global_position)
-			if c.distance_to(p.global_position) < Player.RADIUS + 3.0 and not game.dead:
-				p.take_hit(1, BEAM_SOURCE) # dash i-frames pass straight through
+			if not beam_hit and c.distance_to(p.global_position) < Player.RADIUS + 3.0 and not game.dead and not p.is_invulnerable():
+				beam_hit = true # 1 pip per beam; dash i-frames pass straight through
+				p.take_hit(1, BEAM_SOURCE)
 			if tether_t <= 0.0:
 				_drop_tether()
 

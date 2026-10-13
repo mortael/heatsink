@@ -311,7 +311,7 @@ func _report(p: Player) -> void:
 	print("route: %s" % str(game.run.visited))
 	print("scrap: %d  max pips: %d  used: %s  victory: %s" % [game.scrap, p.max_pips, str(used), game.victory])
 	print("pips lost by source: %s" % str(hits))
-	print("elites: %d  cores: %d  tempered: %s  forged: %s  dodges: %d" % [game.elites_killed, game.cores, str(game.inventory.tempered), str(game.inventory.forged), dodges])
+	print("elites: %d  cores: %d  tempered: %s  forged: %s  frames spent dodging: %d" % [game.elites_killed, game.cores, str(game.inventory.tempered), str(game.inventory.forged), dodges])
 	var cursed: Array = game.inventory.owned.filter(func(id: String) -> bool: return ItemDB.is_slagged(id))
 	if not cursed.is_empty():
 		print("slagged: %s  absolution: %s  absolved: %s" % [str(cursed), str(game.inventory.absolution), str(game.inventory.absolved_ids)])
