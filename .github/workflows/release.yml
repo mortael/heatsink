@@ -2,16 +2,18 @@ name: Build and release
 
 # Every merge to main exports a Windows build and a Web build, publishes both
 # as a GitHub Release, and deploys the Web build to GitHub Pages.
+# Pull requests only run the export, to catch a broken build before merging.
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 env:
   GODOT_VERSION: 4.5.1
 
 concurrency:
-  group: release
+  group: release-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: false
 
 jobs:
@@ -77,6 +79,7 @@ jobs:
 
   release:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -104,6 +107,7 @@ jobs:
 
   pages:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write
