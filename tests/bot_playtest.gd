@@ -2,7 +2,8 @@ extends Node
 ## Automated playtest: a simple bot plays the prototype and reports clear times and deaths.
 ## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [mode] [shot_dir]
 ## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test),
-## "slagged" starts with the three Slagged items. Between fights the bot shops, rests, gambles
+## "slagged" starts with the three Slagged items, "elite" always takes an Elite door when one is offered,
+## "forge" starts with Tinder Rounds and 3 Cores so the Anvil can force a Fusion. Between fights the bot shops, rests, gambles
 ## and walks through a random door, so a long run exercises the whole Stratum route.
 
 var game: Node
@@ -20,6 +21,11 @@ var all_items := false
 var picks := 0
 var picker_frames := 0
 var slagged := false
+var elite_mode := false
+var dodges := 0
+var hits := {} # damage source -> pips lost
+var last_pips := -1
+var last_max := -1
 var plan: Array = [] # pedestals to use in the current room
 var plan_room := -1
 var door_pick := -1
@@ -39,10 +45,16 @@ func _ready() -> void:
 	passive = args.size() > 2 and args[2] == "passive"
 	all_items = args.size() > 2 and args[2] == "allitems"
 	slagged = args.size() > 2 and args[2] == "slagged"
+	elite_mode = args.size() > 2 and args[2] == "elite"
 	if args.size() > 3:
 		shot_dir = args[3]
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
+	if all_items:
+		game.cores = 4 # exercise the Anvil
+	if args.size() > 2 and args[2] == "forge":
+		game.cores = 3 # exercise a Forced Fusion: Cluster Embers without Frag Lattice
+		game.inventory.add("tinder_rounds")
 	for id: String in ItemDB.ITEMS:
 		if (all_items and not ItemDB.is_slagged(id)) or (slagged and ItemDB.is_slagged(id)):
 			game.inventory.add(id)
@@ -63,12 +75,22 @@ func _process(_delta: float) -> void:
 			get_viewport().get_texture().get_image().save_png("%s/picker.png" % shot_dir)
 		if picker_frames == 6 and shot_dir != "" and game.room_kind == "wager":
 			_save("wager_picker")
+		if picker_frames == 6 and shot_dir != "" and game.room_kind == "vault":
+			_save("anvil_picker")
+		if picker_frames == 6 and shot_dir != "" and game.room_kind == "elite":
+			_save("elite_picker")
 		if picker_frames >= 10:
 			picker_frames = 0
 			_pick()
 		return
 	p.bot = true
+	if last_pips >= 0 and p.pips < last_pips and p.max_pips == last_max:
+		hits[game.last_hit_source] = hits.get(game.last_hit_source, 0) + last_pips - p.pips
+	last_pips = p.pips
+	last_max = p.max_pips
 	_bot(p)
+	if not passive:
+		_dodge(p)
 	if p.heat.band == Heat.Band.HOT:
 		min_heat_seen_hot = true
 	if shot_dir != "":
@@ -129,7 +151,8 @@ func _bot(p: Player) -> void:
 	var to_e := nearest.global_position - p.global_position
 	p.bot_aim = to_e
 	# Keep ~4 tiles away, strafe, and drift toward the centre to avoid corners.
-	var away := -to_e.normalized() if nd < 4.0 * C.TILE else to_e.normalized() * 0.3
+	var keep := (6.0 if nearest is Forgewarden else 4.0) * C.TILE
+	var away := -to_e.normalized() if nd < keep else to_e.normalized() * 0.3
 	var strafe := to_e.normalized().orthogonal() * 0.6
 	var home := (centre - p.global_position) / 400.0
 	p.bot_move = away + strafe + home
@@ -147,6 +170,47 @@ func _bot(p: Player) -> void:
 		return
 	if threat != null and p.dash_charges > 0 and p.dash_time <= 0.0:
 		p.bot_move = (p.global_position - threat.global_position).normalized().orthogonal()
+		p.bot_dash = true
+
+
+## Reads the Forgewarden's and Linesman's telegraphs the way a player would and steps out of them.
+func _dodge(p: Player) -> void:
+	var pos := p.global_position
+	var away := Vector2.ZERO
+	var dash := false
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is Forgewarden:
+			var f: Forgewarden = e
+			match f.state:
+				Forgewarden.S.RAISE, Forgewarden.S.LEAP:
+					var d := pos.distance_to(f.target)
+					if d < Forgewarden.SLAM_RADIUS + 30.0:
+						away += (pos - f.target).normalized() * 2.0 if d > 1.0 else Vector2.RIGHT * 2.0
+				Forgewarden.S.SHOCK:
+					var r := Forgewarden.RING_REACH * (1.0 - maxf(f.t, 0.0) / Forgewarden.RING_TIME)
+					var d2 := pos.distance_to(f.global_position)
+					if d2 > r and d2 - r < 60.0 and d2 < Forgewarden.RING_REACH + 20.0:
+						dash = true
+						away += (f.global_position - pos).normalized()
+				Forgewarden.S.INHALE, Forgewarden.S.BREATH:
+					var to := pos - f.global_position
+					if to.length() < Forgewarden.CONE_REACH + 60.0 and absf(f.facing.angle_to(to)) < Forgewarden.CONE_HALF + 0.5:
+						var side := f.facing.orthogonal()
+						away += (side if side.dot(to) >= 0.0 else -side) * 2.0
+		elif e is Linesman:
+			var l: Linesman = e
+			if l.tether != Linesman.T.IDLE and l.partner != null and is_instance_valid(l.partner):
+				var c := Geometry2D.get_closest_point_to_segment(pos, l.global_position, l.partner.global_position)
+				if c.distance_to(pos) < 50.0:
+					away += (pos - c).normalized() * 1.5 if c.distance_to(pos) > 1.0 else Vector2.UP
+	for m in game.world.get_children():
+		if m is MoltenPatch and pos.distance_to(m.global_position) < MoltenPatch.RADIUS + 30.0:
+			away += (pos - m.global_position).normalized()
+	if away == Vector2.ZERO and not dash:
+		return
+	dodges += 1
+	p.bot_move = away.normalized() if away != Vector2.ZERO else p.bot_move
+	if dash and p.dash_charges > 0 and p.dash_time <= 0.0:
 		p.bot_dash = true
 
 
@@ -174,6 +238,10 @@ func _explore(p: Player) -> void:
 		return
 	if door_pick < 0 or door_pick >= open.size():
 		door_pick = randi() % open.size()
+		if elite_mode:
+			for i in open.size():
+				if open[i].kind == "elite":
+					door_pick = i
 	_walk(p, open[door_pick].global_position + Vector2(0, 2))
 
 
@@ -188,8 +256,10 @@ func _make_plan(p: Player) -> Array:
 			if p.pips < p.max_pips:
 				out.push_front(peds.filter(func(q: Pedestal) -> bool: return q.kind == "repair")[0])
 		"vault":
-			var kind := "vault_repair" if p.pips < p.max_pips or p.max_pips <= 4 else "altar"
+			var kind := "vault_repair" if p.pips < p.max_pips - 1 or game.cores == 0 else "anvil"
 			out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == kind))
+			if p.max_pips >= 5:
+				out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == "altar"))
 		"wager":
 			if not game.inventory.owned.is_empty():
 				out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == "crucible"))
@@ -213,7 +283,8 @@ func _pick() -> void:
 	var inv: Inventory = game.inventory
 	var best := 0
 	for i in game.picker.options.size():
-		if inv.completes_fusion(game.picker.options[i]) != "":
+		var o: String = game.picker.options[i]
+		if o.begins_with("forge:") or (not o.contains(":") and inv.completes_fusion(o) != ""):
 			best = i
 	picks += 1
 	game.picker.choose(best)
@@ -239,6 +310,8 @@ func _report(p: Player) -> void:
 	print("fusions: %s" % str(game.inventory.fusions))
 	print("route: %s" % str(game.run.visited))
 	print("scrap: %d  max pips: %d  used: %s  victory: %s" % [game.scrap, p.max_pips, str(used), game.victory])
+	print("pips lost by source: %s" % str(hits))
+	print("elites: %d  cores: %d  tempered: %s  forged: %s  dodges: %d" % [game.elites_killed, game.cores, str(game.inventory.tempered), str(game.inventory.forged), dodges])
 	var cursed: Array = game.inventory.owned.filter(func(id: String) -> bool: return ItemDB.is_slagged(id))
 	if not cursed.is_empty():
 		print("slagged: %s  absolution: %s  absolved: %s" % [str(cursed), str(game.inventory.absolution), str(game.inventory.absolved_ids)])
@@ -260,6 +333,27 @@ func _room_shot(p: Player) -> void:
 	if RunMap.is_combat(kind) and not game.doors.is_empty() and game.doors[0].open and game.doors.size() >= 2 and not room_shots.has("doors"):
 		if p.global_position.y < 7.0 * C.TILE:
 			_save("doors")
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is Forgewarden:
+			var f: Forgewarden = e
+			if f.state == Forgewarden.S.RAISE and f.t < 0.4:
+				_save("forgewarden_hammerfall")
+			elif f.state == Forgewarden.S.SHOCK and f.t < 0.3:
+				_save("forgewarden_ring")
+			elif f.state == Forgewarden.S.BREATH and f.t < 0.8:
+				_save("forgewarden_breath")
+			elif f.state == Forgewarden.S.INHALE and f.t < 0.5:
+				_save("forgewarden_inhale")
+		elif e is Linesman:
+			var l: Linesman = e
+			if l.beam_active():
+				_save("linesman_beam")
+			elif l.tether == Linesman.T.AIM:
+				_save("linesman_aim")
+	if game.doors.any(func(d: Door) -> bool: return d.open and d.kind == "elite") and p.global_position.y < 7.0 * C.TILE:
+		_save("elite_door")
+	if kind == "elite" and frames - room_seen_at == 70:
+		_save("elite_room")
 	# Stand next to a pedestal long enough to see its card.
 	for ped: Pedestal in game.pedestals:
 		if ped.near and ped.kind == "item" and not room_shots.has("shop_card"):

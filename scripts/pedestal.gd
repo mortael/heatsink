@@ -6,7 +6,7 @@ extends Node2D
 const REACH := 1.4 * C.TILE
 
 var game: Node
-var kind := "item" # item, repair, reroll, vault_repair, altar, crucible, coinflip
+var kind := "item" # item, repair, reroll, vault_repair, anvil, altar, crucible, coinflip
 var item_id := ""
 var price := 0
 var title := ""
@@ -51,6 +51,9 @@ func _draw() -> void:
 		"altar":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -14), c + Vector2(9, 8), c + Vector2(-9, 8)]), Color(color, a))
 			draw_circle(c + Vector2(0, 2), 4.0, Color(1, 0.9, 0.6, a))
+		"anvil":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-15, -6), c + Vector2(13, -6), c + Vector2(17, -10), c + Vector2(8, 0), c + Vector2(5, 0), c + Vector2(8, 9), c + Vector2(-8, 9), c + Vector2(-5, 0), c + Vector2(-12, 0)]), Color(0.55, 0.58, 0.62, a))
+			draw_circle(c + Vector2(0, -12), 3.0, Color(color, a))
 		"crucible", "coinflip":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -9), c + Vector2(14, -9), c + Vector2(9, 12), c + Vector2(-9, 12)]), Color(color, a))
 			draw_circle(c + Vector2(0, -12), 6.0 + 1.5 * sin(Time.get_ticks_msec() / 150.0), Color(1, 0.55, 0.2, a))

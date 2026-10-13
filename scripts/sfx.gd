@@ -88,6 +88,16 @@ func _build() -> void:
 		var chord := sin(TAU * 220.0 * t) + sin(TAU * 277.0 * t) * 0.8 + sin(TAU * 330.0 * t) * 0.7 + sin(TAU * 440.0 * t) * 0.4
 		var anvil := sin(TAU * 1250.0 * t) * exp(-t * 9.0) * 0.6 + n * exp(-t * 30.0) * 0.4
 		return chord * 0.12 * exp(-t * 2.5) * minf(1.0, t * 30.0) + anvil)
+	streams["chirp"] = _gen(0.4, func(t: float, _n: float) -> float:
+		return sin(TAU * (900.0 + 2600.0 * t) * t) * 0.22 * (0.3 + t / 0.4))
+	streams["beam"] = _gen(0.5, func(t: float, n: float) -> float:
+		return (sin(TAU * 220.0 * t) * 0.3 + sin(TAU * 223.0 * t) * 0.3 + n * 0.05) * sin(PI * t / 0.5))
+	streams["hiss"] = _gen(1.0, func(t: float, n: float) -> float:
+		return n * 0.35 * t + sin(TAU * (80.0 + 120.0 * t) * t) * 0.2 * t)
+	streams["slam"] = _gen(0.6, func(t: float, n: float) -> float:
+		return sin(TAU * (70.0 - 40.0 * t) * t) * exp(-t * 6.0) * 0.9 + n * exp(-t * 18.0) * 0.5)
+	streams["core"] = _gen(0.7, func(t: float, _n: float) -> float:
+		return (sin(TAU * 880.0 * t) + sin(TAU * 1320.0 * t) * 0.6) * exp(-t * 5.0) * 0.25)
 	streams["clear"] = _gen(0.6, func(t: float, _n: float) -> float:
 		var f := 523.0 if t < 0.15 else 784.0
 		return sin(TAU * f * t) * exp(-fmod(t, 0.15) * 6.0) * 0.3)

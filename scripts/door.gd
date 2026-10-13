@@ -32,6 +32,8 @@ func _draw() -> void:
 	# Opening in the wall
 	draw_rect(frame, Color(0.05, 0.04, 0.04) if open else Color(0.13, 0.11, 0.1))
 	draw_rect(frame.grow(3), Color(col, 0.9 if open else 0.45), false, 3.0)
+	if kind == "elite":
+		draw_rect(frame.grow(8), Color(col, 0.7 if open else 0.35), false, 3.0) # red-framed Elite door
 	if not open:
 		for i in 5:
 			var x := -t + 8 + i * (2 * t - 16) / 4.0
@@ -70,6 +72,10 @@ func _icon(c: Vector2, col: Color) -> void:
 			var cup := PackedVector2Array([c + Vector2(-10, -7), c + Vector2(10, -7), c + Vector2(6, 9), c + Vector2(-6, 9)])
 			draw_colored_polygon(cup, col)
 			draw_circle(c + Vector2(0, -9), 4.0, Color(1, 0.55, 0.2))
+		"elite":
+			# A raised hammer: a Forgewarden waits behind this door.
+			draw_line(c + Vector2(-8, 9), c + Vector2(5, -4), col, 3.0)
+			draw_rect(Rect2(c + Vector2(0, -12), Vector2(13, 9)), col)
 		"gate":
 			draw_line(c + Vector2(-9, -9), c + Vector2(9, 9), col, 3.0)
 			draw_line(c + Vector2(9, -9), c + Vector2(-9, 9), col, 3.0)

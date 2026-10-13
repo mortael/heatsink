@@ -10,6 +10,8 @@ const DROP_CHANCE := 0.25
 const REPAIR_PRICE := 40
 const REROLL_PRICE := 15
 const REROLL_STEP := 10
+const ALTAR_CHANCE := 1.0 / 3.0 # Altars sit in 1 of every 3 Cooling Vaults (GDD section 4)
+const SLAGGED_SLOT := 0.2 # elite rewards: chance per card to be a Slagged item
 
 var world: Node2D
 var room: Room
@@ -30,6 +32,8 @@ var last_hit_source := ""
 var last_hit_band := ""
 var rooms_cleared := 0
 var scrap := 0
+var cores := 0
+var elites_killed := 0
 var room_kind := ""
 var took_damage_this_room := false
 var doors: Array[Door] = []
@@ -110,7 +114,7 @@ func _build_room(kind: String) -> void:
 	run.enter(kind)
 	took_damage_this_room = false
 	room = Room.new(_pick_layout(kind))
-	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) else Color(0.9, 0.4, 0.1)
+	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
 	world.add_child(room)
 	world.move_child(room, 0)
 	player.position = room.entry_point()
@@ -127,7 +131,7 @@ func _build_room(kind: String) -> void:
 	var label := "ROOM %d / %d" % [run.index, RunMap.GATE] if kind != "gate" else "THE GATE"
 	hud.banner(info.name, label)
 	if RunMap.is_combat(kind):
-		director.start_room(run.index, kind == "gate")
+		director.start_room(run.index, kind if kind == "gate" or kind == "elite" else "combat")
 	else:
 		_setup_special(kind)
 		_open_doors()
@@ -196,6 +200,16 @@ func on_enemy_killed(e: Enemy) -> void:
 		world.add_child.call_deferred(b)
 
 
+## Elites drop 1 Core (GDD section 9): the only steady Core source.
+func on_elite_killed(e: Enemy) -> void:
+	elites_killed += 1
+	cores += 1
+	fx.number(e.global_position + Vector2(0, -40), 1, false, Color(0.55, 0.95, 1.0), 26)
+	fx.ring(e.global_position, 1.5 * C.TILE, Color(0.55, 0.95, 1.0), 0.5)
+	hud.banner("+1 CORE", "Spend Cores at the Anvil in a Cooling Vault")
+	Sfx.play("core", 0.0, -2.0)
+
+
 func on_room_cleared(time: float) -> void:
 	rooms_cleared += 1
 	inventory.on_room_clear(not took_damage_this_room)
@@ -225,8 +239,33 @@ func _give_reward() -> void:
 			if opts.is_empty():
 				opts.append("patch_kit") # every Conductor is owned
 			_open_picker("reward", opts, "CHOOSE A CONDUCTOR")
+		"elite":
+			var opts := _elite_offer()
+			if opts.is_empty():
+				add_scrap(40, true) # every Rare and Slagged item is owned
+				_open_doors()
+				return
+			_open_picker("reward", opts, "ELITE SALVAGE", "Rare or better · Slagged items carry a drawback until absolved")
 		_:
 			_open_doors()
+
+
+## Elite reward: 3 cards at Rare or better. Each card has a 20% chance to be a Slagged item;
+## when the Rares run out, Slagged items fill the remaining cards.
+func _elite_offer() -> Array[String]:
+	var rares: Array[String] = inventory.offer(3, func(id: String) -> bool: return ItemDB.ITEMS[id].rarity == "Rare")
+	var slag: Array[String] = []
+	for id: String in ItemDB.ITEMS:
+		if ItemDB.is_slagged(id) and not inventory.owned.has(id):
+			slag.append(id)
+	slag.shuffle()
+	var out: Array[String] = []
+	for i in 3:
+		if not slag.is_empty() and (rares.is_empty() or randf() < SLAGGED_SLOT):
+			out.append(slag.pop_back())
+		elif not rares.is_empty():
+			out.append(rares.pop_front())
+	return out
 
 
 func add_scrap(amount: int, show: bool) -> void:
@@ -255,6 +294,9 @@ func _on_picked(id: String) -> void:
 		"coinflip":
 			if id != "":
 				inventory.add(id)
+		"anvil":
+			if id != "":
+				_use_anvil(id)
 
 
 # ---------------------------------------------------------------- non-combat rooms
@@ -276,8 +318,11 @@ func _setup_special(kind: String) -> void:
 			var rr := _pedestal("reroll", Vector2(16 * t, 9 * t), "Reroll stock", ["Replace every unsold item.", "Each reroll costs 10 more."], Color(1, 0.85, 0.3))
 			rr.price = _reroll_price
 		"vault":
-			_pedestal("vault_repair", Vector2(9 * t, 6.5 * t), "Cooling Bath", ["Repair 2 Plating pips.", "Choose one: the other option goes cold."], Color(0.45, 0.8, 1.0))
-			_pedestal("altar", Vector2(15 * t, 6.5 * t), "Stoke Altar", ["Heat cap rises to 120: 20 more Heat of Overdrive.", "!Costs 1 max Plating pip. Overheat lasts 1 s longer.", "Choose one: the other option goes cold."], Color(1.0, 0.45, 0.2))
+			# Choose one: the Bath or the Anvil (GDD section 6). Altars are a separate, optional offer.
+			_pedestal("vault_repair", Vector2(8 * t, 6.5 * t), "Cooling Bath", ["Repair 2 Plating pips.", "Choose the Bath or the Anvil: the other goes cold."], Color(0.45, 0.8, 1.0))
+			_pedestal("anvil", Vector2(12 * t, 6.5 * t), "The Anvil", ["Temper an item for 1 Core: upgrades how it works.", "Forced Fusion for 3 Cores: stands in for the one ingredient you're missing.", "Choose the Bath or the Anvil: the other goes cold."], Color(0.55, 0.95, 1.0))
+			if randf() < ALTAR_CHANCE and not inventory.stoked:
+				_pedestal("altar", Vector2(16 * t, 6.5 * t), "Stoke Altar", ["Heat cap rises to 120: 20 more Heat of Overdrive.", "!Costs 1 max Plating pip. Overheat lasts 1 s longer."], Color(1.0, 0.45, 0.2))
 		"wager":
 			_pedestal("crucible", Vector2(9 * t, 6.5 * t), "The Crucible", ["Feed in one owned item:", "50%: it upgrades to a higher rarity", "35%: it transmutes to a same-keyword item", "!15%: it becomes Slagged"], Color(0.8, 0.45, 1.0))
 			_pedestal("coinflip", Vector2(15 * t, 6.5 * t), "Ember Coin", ["Stake 1 max Plating pip on a 60% flip.", "Win: choose a Rare item you don't own.", "!Lose: the pip is gone."], Color(1.0, 0.55, 0.25))
@@ -335,7 +380,23 @@ func use_pedestal(p: Pedestal) -> void:
 			_buy_fx(p)
 		"vault_repair":
 			player.pips = mini(player.pips + 2, player.max_pips)
-			_vault_choice(p)
+			_vault_choice(p, ["vault_repair", "anvil"])
+		"anvil":
+			var opts: Array[String] = []
+			if cores >= ItemDB.TEMPER_COST:
+				for id in inventory.temperable():
+					opts.append("temper:" + id)
+			if cores >= ItemDB.FORGE_COST:
+				for f in inventory.forgeable():
+					opts.append("forge:" + f)
+			if opts.is_empty():
+				if cores < ItemDB.TEMPER_COST:
+					hud.banner("THE ANVIL NEEDS A CORE", "Elites drop Cores")
+				else:
+					hud.banner("NOTHING TO TEMPER", "Own an untempered item first")
+				Sfx.play("player_hit", 6.0, -12.0)
+				return
+			_open_picker("anvil", opts, "THE ANVIL", "%d Core%s  ·  Temper 1  ·  Forced Fusion 3" % [cores, "" if cores == 1 else "s"], true)
 		"altar":
 			if inventory.stoked:
 				hud.banner("ALREADY STOKED", "The Altar has nothing more to give")
@@ -348,7 +409,7 @@ func use_pedestal(p: Pedestal) -> void:
 			player.heat.cap = 120.0
 			inventory.stoked = true
 			hud.banner("STOKED", "Heat cap 120 · Overheat lasts 1 s longer")
-			_vault_choice(p)
+			_vault_choice(p, ["altar"])
 		"crucible":
 			var feedable: Array[String] = []
 			for id in inventory.owned:
@@ -380,11 +441,38 @@ func use_pedestal(p: Pedestal) -> void:
 				hud.banner("THE COIN LANDS ASH-SIDE", "You lost 1 max Plating pip")
 
 
-func _vault_choice(chosen: Pedestal) -> void:
+func _vault_choice(chosen: Pedestal, kinds: Array) -> void:
 	for p in pedestals:
-		p.active = false
+		if kinds.has(p.kind):
+			p.active = false
 	Sfx.play("vent", 6.0, -6.0)
 	fx.ring(chosen.global_position, 2.0 * C.TILE, chosen.color, 0.4)
+
+
+func _use_anvil(choice: String) -> void:
+	var anvil: Pedestal = null
+	for p in pedestals:
+		if p.kind == "anvil":
+			anvil = p
+	var parts := choice.split(":")
+	if parts[0] == "temper" and cores >= ItemDB.TEMPER_COST:
+		cores -= ItemDB.TEMPER_COST
+		inventory.temper(parts[1])
+		hud.banner("TEMPERED: " + ItemDB.ITEMS[parts[1]].name.to_upper(), ItemDB.TEMPER[parts[1]])
+	elif parts[0] == "forge" and cores >= ItemDB.FORGE_COST:
+		cores -= ItemDB.FORGE_COST
+		inventory.force_fusion(parts[1])
+	else:
+		return
+	Sfx.play("slam", 6.0, -6.0)
+	Sfx.play("fusion", 7.0, -8.0)
+	Juice.add_trauma(0.25)
+	if anvil != null:
+		fx.sparks(anvil.global_position + Vector2(0, -12), Vector2.UP, 16, Color(1, 0.8, 0.4))
+		# Using the Anvil sends the Bath cold; the Anvil stays hot while you have Cores to spend.
+		for p in pedestals:
+			if p.kind == "vault_repair":
+				p.active = false
 
 
 func _buy_fx(p: Pedestal) -> void:
