@@ -1,0 +1,116 @@
+name: Build and release
+
+# Every merge to main exports a Windows build and a Web build, publishes both
+# as a GitHub Release, and deploys the Web build to GitHub Pages.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.5.1
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and export templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-win-web
+
+      - name: Download Godot and export templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          mkdir -p ~/godot
+          curl -sSfL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          curl -sSfL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          # Only the Windows x86_64 and Web templates; the full set is ~1.3 GB.
+          unzip -q -j /tmp/templates.tpz 'templates/version.txt' 'templates/web_*' 'templates/windows_*x86_64*' -d "$dest"
+          rm /tmp/godot.zip /tmp/templates.tpz
+
+      - name: Import project
+        run: timeout 300 ~/godot/godot --headless --import || true
+
+      - name: Export Windows
+        run: |
+          mkdir -p build/windows
+          timeout 600 ~/godot/godot --headless --export-release "Windows Desktop" build/windows/HEATSINK.exe
+          test -s build/windows/HEATSINK.exe
+
+      - name: Export Web
+        run: |
+          mkdir -p build/web
+          timeout 600 ~/godot/godot --headless --export-release "Web" build/web/index.html
+          test -s build/web/index.wasm
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          (cd build/windows && zip -q -9 ../../dist/HEATSINK-windows.zip HEATSINK.exe)
+          (cd build/web && zip -q -9 -r ../../dist/HEATSINK-web.zip .)
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: dist/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: builds
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="build-${{ github.run_number }}"
+          sha="${{ github.sha }}"
+          gh release create "$tag" dist/*.zip \
+            --repo "${{ github.repository }}" \
+            --target "$sha" \
+            --title "HEATSINK build ${{ github.run_number }}" \
+            --notes "Automatic build of \`${sha:0:7}\` on main.
+
+          - **Windows:** download HEATSINK-windows.zip, unzip, run HEATSINK.exe.
+          - **Browser:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          - **Web files:** HEATSINK-web.zip, for hosting elsewhere."
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
