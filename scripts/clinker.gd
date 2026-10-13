@@ -32,7 +32,7 @@ func _ai(delta: float) -> void:
 	match state:
 		S.CHASE:
 			if to_p.length() > 1.0:
-				facing = to_p.normalized()
+				facing = nav_dir(p.global_position, delta)
 			var desired := (facing * SPEED + _separation().limit_length(1.0) * SPEED * 1.2).limit_length(SPEED)
 			velocity = velocity.lerp(desired, 0.15)
 			if to_p.length() < TRIGGER_RANGE and not game.dead:

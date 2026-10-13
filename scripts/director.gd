@@ -1,14 +1,14 @@
 class_name Director
 extends Node
-## Encounter director for the prototype's endless single room (GDD section 6).
+## Encounter director for combat rooms (GDD section 6).
 ## Room budget TP = 8 + 2 x room index; Clinkers cost 1 TP; waves split the budget.
+## The Foundry Gate stands in for the Stratum boss until bosses exist: a bigger 3-wave fight.
 ## Next wave arrives when < 25% of the wave remains or after 8 s. Portals warn 0.8 s ahead,
 ## and nothing spawns within 3 tiles of the player.
 
 const PORTAL_TIME := 0.8
 const MIN_SPAWN_DIST := 3.0 * C.TILE
 const WAVE_TIMEOUT := 8.0
-const BETWEEN_ROOMS := 2.5
 
 var game: Node
 var room_index := 0
@@ -20,19 +20,19 @@ var wave_timer := 0.0
 var room_time := 0.0
 var active := false
 var pending := 0
-var between := 0.0
 var clear_times: Array[float] = []
-var reward_pending := false
 
 
-func start_room() -> void:
-	room_index += 1
+func start_room(index: int, gate := false) -> void:
+	room_index = index
 	budget = 8 + 2 * room_index
 	waves_total = 1 if room_index == 1 else (2 if room_index < 4 else 3)
+	if gate:
+		budget = int(budget * 1.25)
+		waves_total = 3
 	wave = 0
 	room_time = 0.0
 	active = true
-	game.hud.banner("ROOM %d" % room_index, "%d Clinkers in %d wave%s" % [budget, waves_total, "" if waves_total == 1 else "s"])
 	_spawn_wave()
 
 
@@ -88,15 +88,6 @@ func _portal(pos: Vector2) -> void:
 func _physics_process(delta: float) -> void:
 	if game.dead:
 		return
-	if between > 0.0:
-		between -= delta
-		if between <= 0.0:
-			if reward_pending:
-				reward_pending = false
-				game.offer_reward()
-			else:
-				start_room()
-		return
 	if not active:
 		return
 	room_time += delta
@@ -109,7 +100,3 @@ func _physics_process(delta: float) -> void:
 		active = false
 		clear_times.append(room_time)
 		game.on_room_cleared(room_time)
-		game.hud.banner("ROOM CLEAR", "%.1f s" % room_time)
-		Sfx.play("clear")
-		reward_pending = true
-		between = 1.2

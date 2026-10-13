@@ -7,7 +7,13 @@ const KEYWORD_COLORS := {
 	"shrapnel": Color(0.82, 0.85, 0.92),
 	"arc": Color(0.4, 0.9, 1.0),
 	"ricochet": Color(1.0, 0.86, 0.45),
+	"slagged": Color(1.0, 0.25, 0.3),
 }
+
+const RARITY_RANK := {"Common": 0, "Uncommon": 1, "Rare": 2, "Slagged": 3}
+
+## Scrapper prices (GDD section 9). Conductors have their own flat price.
+const PRICE := {"conductor": 35, "Common": 40, "Uncommon": 65, "Rare": 100}
 
 ## Resonance I unlocks at 2 items of one keyword.
 const RESONANCE := {
@@ -70,6 +76,26 @@ const ITEMS := {
 		"name": "Rebound Charge", "keyword": "ricochet", "tier": "B", "rarity": "Uncommon",
 		"desc": "After a ricochet, a rivet deals +50% damage and pierces 1 more enemy.",
 	},
+	# Slagged items (GDD section 4): Legendary-strength power with a printed drawback.
+	# Completing the Absolution removes the drawback and keeps the power.
+	"brittle_crown": {
+		"name": "Brittle Crown", "keyword": "slagged", "tier": "S", "rarity": "Slagged",
+		"desc": "+2 rivets per shot, always on.",
+		"drawback": "Any hit taken while Hot costs 3 pips.",
+		"absolution": "Clear 3 rooms in a row without taking damage.", "goal": 3,
+	},
+	"hungry_coal": {
+		"name": "Hungry Coal", "keyword": "slagged", "tier": "S", "rarity": "Slagged",
+		"desc": "Vent damage x3.",
+		"drawback": "Heat never decays on its own. Only Vent and dashes lower it.",
+		"absolution": "Kill 40 enemies with Vent.", "goal": 40,
+	},
+	"feral_valve": {
+		"name": "Feral Valve", "keyword": "slagged", "tier": "S", "rarity": "Slagged",
+		"desc": "Overdrive starts at 60 Heat instead of 80.",
+		"drawback": "Overheat lasts 4 s instead of 2 s.",
+		"absolution": "Stay in the Hot band for a combined 90 s.", "goal": 90,
+	},
 }
 
 const FUSIONS := {
@@ -98,6 +124,17 @@ static func get_item(id: String) -> Dictionary:
 	if id == "patch_kit":
 		return PATCH_KIT
 	return ITEMS[id]
+
+
+static func is_slagged(id: String) -> bool:
+	return id != "patch_kit" and ITEMS[id].keyword == "slagged"
+
+
+static func price(id: String) -> int:
+	var item: Dictionary = get_item(id)
+	if item.keyword == "conductor":
+		return PRICE.conductor
+	return PRICE.get(item.rarity, 100)
 
 
 static func keyword_color(kw: String) -> Color:

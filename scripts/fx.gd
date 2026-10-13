@@ -44,6 +44,14 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+func clear() -> void:
+	parts.clear()
+	rings.clear()
+	texts.clear()
+	portals.clear()
+	arcs.clear()
+
+
 func _add(pos: Vector2, vel: Vector2, life: float, shape: String, color: Color, size: float, drag := 0.02) -> void:
 	if parts.size() >= MAX_PARTS:
 		parts.remove_at(0)
