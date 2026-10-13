@@ -1,6 +1,6 @@
 # HEATSINK prototype
 
-Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, Clinker fodder, items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, a shop, a rest room and a gamble room.
+Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, three enemies (Clinker, Linesman, Forgewarden), items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
 
 ## Run it
 
@@ -28,6 +28,20 @@ Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, Cl
 - **Dash** gives brief invulnerability and quenches 10 Heat, so you can use it to stay in the Hot band longer.
 - Clinkers glow orange and squash for 0.6 s before they lunge. Dash through or step out of the way.
 
+## Enemies and Elites (vertical slice step 3)
+
+- **Linesman** (from room 3): a tall drone that keeps its distance. It draws a dotted violet line to a nearby enemy, and 0.7 s later the line becomes a cyan beam for 3 s that costs 1 pip to touch. Kill either end to drop the beam, or dash through it. Get within 3 tiles and it chirps, crouches and hops away.
+- **Forgewarden** (Elite): 600 HP behind 3 front plates that block 75% of damage from the front until each takes 80. Its back takes +50%, and it turns slowly, so circle behind it.
+  - *Hammerfall*: a red circle grows where you stand, then it leaps and slams. Walk out of the circle, then dash through the ring that rolls out to 5 tiles. 2 pips.
+  - *Bellows Breath*: the chest glows and a red cone shows for 1 s, then flame fills it for 1.2 s and leaves Molten floor for 3 s. Step out to the side. 2 pips.
+  - After each attack it rests for 2 s: the moment to Vent.
+- **Elite doors** have a red double frame. Inside: a Forgewarden, 4-6 Clinkers, sometimes a Linesman, and a second Clinker wave. Every Stratum offers at least two, never as the only door. Reward: **1 Core** and a pick of 3 Rare-or-better items, where each card has a 20% chance to be a Slagged item.
+- The **Foundry Gate** now ends with a Forgewarden and a Linesman.
+- **Cores** only come from Elites. Spend them at **the Anvil** in a Cooling Vault:
+  - *Temper* (1 Core) upgrades how an item works, e.g. Frag Lattice drops 6 shards instead of 4. Tempered items get a cyan mark on the HUD.
+  - *Forced Fusion* (3 Cores) completes a Fusion you're one ingredient short of. The Fusion also gives you that ingredient's effect.
+- A Cooling Vault is now a choice between the Cooling Bath (repair 2 pips) and the Anvil. A Stoke Altar shows up in 1 of every 3 Vaults as a separate option.
+
 ## Items (vertical slice step 1)
 
 After each room you pick 1 of 3 salvage cards. There are 13 items across the three synergy tiers:
@@ -46,10 +60,11 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 - **Scrap** comes from every cleared fight (8–15) and from Clinker drops.
 - **Scrapper (shop):** 4 items (one is always a Conductor), a 1-pip repair for 40, and a reroll for 15 that costs 10 more each time. Offered from room 5, and always one of the doors by room 7.
 - **Crucible Wager:** feed in an item for 50% upgrade / 35% transmute / 15% Slagged, or stake 1 max Plating pip on a 60% coin flip for a Rare pick. Always one of the doors by room 10.
-- **Cooling Vault:** repair 2 pips, or take the Stoke Altar (−1 max pip, Heat cap 120, Overheat +1 s). Always right before the Gate, sometimes once mid-run too.
+- **Cooling Vault:** repair 2 pips or use the Anvil (see step 3), and sometimes a Stoke Altar (−1 max pip, Heat cap 120, Overheat +1 s). Always right before the Gate, sometimes once mid-run too.
 - **Slagged items** (Brittle Crown, Hungry Coal, Feral Valve) are strong with a drawback printed in red. Finish the Absolution shown on the HUD and the drawback goes away.
 - Room layouts come from 8 hand-made templates, each mirrored into 4 variants.
 - The **Foundry Gate** is a tougher 3-wave fight that stands in for the Stratum boss until bosses exist.
+- Not built yet: Scorched Paths (two chained Elites), Legendary items and elite affixes. Until Legendaries exist, the Ember Coin pays out a Rare.
 
 ## Layout
 
@@ -59,7 +74,9 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/player.gd` | Movement, Rivet Gun, dash, Vent, damage |
 | `scripts/rivet.gd` | Projectile with embed, pierce and ricochet |
 | `scripts/enemy.gd`, `scripts/clinker.gd` | Enemy base and the Clinker fodder |
-| `scripts/director.gd` | Wave spawning with portal warnings and threat budgets |
+| `scripts/linesman.gd` | Linesman: Tether beam and Snap Back |
+| `scripts/forgewarden.gd`, `scripts/molten_patch.gd` | Forgewarden Elite: armour, Hammerfall, Bellows Breath, Molten floor |
+| `scripts/director.gd` | Wave plans from Threat Point budgets, Elite rooms, portal warnings |
 | `scripts/juice.gd`, `scripts/sfx.gd`, `scripts/fx.gd` | Hit-stop, shake, synthesized sound, particles |
 | `scripts/hud.gd` | Heat gauge, pips, item chips, edge tints, Death Ledger |
 | `scripts/item_db.gd` | Item, Resonance and Fusion data |
@@ -69,7 +86,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/run_map.gd` | The Stratum route: room types and door rolls with the GDD's constraints |
 | `scripts/room.gd`, `scripts/layouts.gd` | Room built from a layout template, plus pathing and line-of-sight helpers |
 | `scripts/door.gd` | Doors that preview the next room |
-| `scripts/pedestal.gd` | Shop items, repairs, altars and the Crucible |
+| `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 
@@ -79,4 +96,4 @@ Automated playtest (headless):
 godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 x
 ```
 
-Use `allitems` instead of `x` to start with every item as a stress test, or `slagged` to start with the three Slagged items. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
+Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.

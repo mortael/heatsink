@@ -1,6 +1,6 @@
 class_name Picker
 extends CanvasLayer
-## "Pick 1 of N" card screen: room rewards, the Crucible and the Ember Coin. Pauses the game while open.
+## "Pick 1 of N" card screen: room rewards, the Crucible, the Ember Coin and the Anvil. Pauses the game while open.
 ## Mouse: hover + click. Keys: 1-9 or arrows + Enter. Pad: d-pad + A. Esc / B backs out when allowed.
 ## Choosing emits the card's id; backing out emits "".
 
@@ -131,7 +131,7 @@ func _draw_view() -> void:
 	var inv: Inventory = game.inventory
 	for i in options.size():
 		var id := options[i]
-		var item: Dictionary = ItemDB.get_item(id)
+		var item: Dictionary = _card(id)
 		var r := _card_rect(i)
 		var kw: String = item.keyword
 		var kc := ItemDB.keyword_color(kw)
@@ -155,7 +155,10 @@ func _draw_view() -> void:
 		# Synergy hints
 		var hint := ""
 		var hint_col := Color(0.75, 0.75, 0.75)
-		if id != "patch_kit":
+		if item.has("hint"):
+			hint = item.hint
+			hint_col = Color(0.55, 0.95, 1.0)
+		elif id != "patch_kit":
 			var f := inv.completes_fusion(id)
 			if f != "":
 				hint = "COMPLETES FUSION: " + ItemDB.FUSIONS[f].name
@@ -171,3 +174,26 @@ func _draw_view() -> void:
 	if cancellable:
 		help += "  ·  Esc/B to back out"
 	view.draw_string(font, Vector2(0, s.y * 0.5 + CARD_H * 0.5 + 56), help, HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(1, 1, 1, 0.5))
+
+
+## What a card shows. Anvil options are "temper:<item>" and "forge:<fusion>".
+func _card(id: String) -> Dictionary:
+	if id.begins_with("temper:"):
+		var item_id := id.trim_prefix("temper:")
+		var item: Dictionary = ItemDB.ITEMS[item_id]
+		return {
+			"name": "Temper " + item.name, "keyword": item.keyword, "tier": item.tier, "rarity": "1 Core",
+			"desc": ItemDB.TEMPER[item_id], "hint": "Lasts the rest of the run",
+		}
+	if id.begins_with("forge:"):
+		var f_id := id.trim_prefix("forge:")
+		var f: Dictionary = ItemDB.FUSIONS[f_id]
+		var missing := ""
+		for part: String in f.recipe:
+			if not game.inventory.owned.has(part):
+				missing = ItemDB.ITEMS[part].name
+		return {
+			"name": "Force " + f.name, "keyword": "fusion", "tier": "C", "rarity": "3 Cores",
+			"desc": f.desc, "hint": "Stands in for " + missing,
+		}
+	return ItemDB.get_item(id)

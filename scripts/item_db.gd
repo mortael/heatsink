@@ -8,6 +8,7 @@ const KEYWORD_COLORS := {
 	"arc": Color(0.4, 0.9, 1.0),
 	"ricochet": Color(1.0, 0.86, 0.45),
 	"slagged": Color(1.0, 0.25, 0.3),
+	"fusion": Color(1.0, 0.82, 0.3),
 }
 
 const RARITY_RANK := {"Common": 0, "Uncommon": 1, "Rare": 2, "Slagged": 3}
@@ -112,6 +113,25 @@ const FUSIONS := {
 		"desc": "Arc kills refund 0.5 s of Vent cooldown, and Vent leaves you Warm (40 Heat) instead of Cold.",
 	},
 }
+
+## Anvil Temper (GDD section 9, 1 Core): upgrades an item's mechanic. Slagged items can't be tempered.
+const TEMPER := {
+	"bellows_valve": "+35% attack rate (was +20%).",
+	"heat_exchanger": "Heat decays 60% faster, dashes recharge 35% faster.",
+	"coolant_line": "Vent cooldown -2.5 s (was -1.5 s).",
+	"long_barrel": "Rivets and shards fly 50% faster and farther.",
+	"cinder_lens": "+20% crit chance (was +10%).",
+	"tinder_rounds": "Death bursts reach 2.5 tiles (was 1.5).",
+	"pyre_coating": "+3 Ignite while Hot; Overheat ignites within 5 tiles for 5 stacks.",
+	"frag_lattice": "6 shards per death (was 4).",
+	"splinter_heads": "5 shards per wall stop (was 3).",
+	"feedback_coil": "Vent arcs hit 5 enemies for 14 dmg.",
+	"static_rivets": "Arcs every 3rd rivet hit (was every 5th).",
+	"bank_shot": "+2 ricochets instead of +1 (3 while Hot).",
+	"rebound_charge": "After a ricochet: +100% damage and pierce 2 more.",
+}
+const TEMPER_COST := 1
+const FORGE_COST := 3
 
 ## Filler offered when the item pool runs dry.
 const PATCH_KIT := {

@@ -9,14 +9,21 @@ extends RefCounted
 ## - the same non-combat type is never offered twice in a row;
 ## - the Scrapper is always on offer by room 7 and the Crucible Wager by room 10, as one door
 ##   among the usual 2-3, so the safe route has both without taking away the choice;
-## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run.
+## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run;
+## - an Elite door (red frame) is offered at least twice per Stratum, never as the only door,
+##   so the safe route always exists.
 
 const ROOMS := 12
 const GATE := ROOMS + 1
+const ELITE_FIRST := 3 # earliest room an Elite door can lead to
+const ELITE_LAST := 11
+const ELITE_MIN := 2
+const ELITE_CHANCE := 0.25
 
 const KINDS := {
 	"combat_item": {"name": "SALVAGE", "sub": "combat · pick 1 of 3 items", "color": Color(1.0, 0.6, 0.25), "combat": true},
 	"combat_conductor": {"name": "CONDUCTOR", "sub": "combat · pick 1 of 3 Conductors", "color": Color(0.72, 0.78, 0.85), "combat": true},
+	"elite": {"name": "ELITE", "sub": "Forgewarden · 1 Core + Rare pick", "color": Color(1.0, 0.22, 0.2), "combat": true},
 	"combat_scrap": {"name": "SCRAP CACHE", "sub": "combat · +25 Scrap", "color": Color(0.9, 0.78, 0.45), "combat": true},
 	"shop": {"name": "SCRAPPER", "sub": "shop · no enemies", "color": Color(1.0, 0.85, 0.3), "combat": false},
 	"vault": {"name": "COOLING VAULT", "sub": "rest · no enemies", "color": Color(0.45, 0.8, 1.0), "combat": false},
@@ -29,6 +36,7 @@ var index := 0 # 1-based number of the room you are in
 var visited: Array[String] = []
 var exits: Array[String] = [] # doors out of the current room
 var extra_vault := false
+var elite_offers := 0
 var _used := {} # non-combat types already taken this Stratum
 
 
@@ -81,6 +89,11 @@ func _roll_exits() -> Array[String]:
 		var s: String = specials[rng.randi_range(0, specials.size() - 1)]
 		out.append(s)
 		specials.erase(s)
+	if _elite_due(next) or (next >= ELITE_FIRST and next <= ELITE_LAST and rng.randf() < ELITE_CHANCE):
+		# An Elite always shares the exit with at least one other door.
+		count = mini(3, maxi(count, out.size() + 2))
+		out.append("elite")
+		elite_offers += 1
 	while out.size() < count:
 		if not specials.is_empty() and rng.randf() < 0.35:
 			var s: String = specials[rng.randi_range(0, specials.size() - 1)]
@@ -98,6 +111,14 @@ func _roll_exits() -> Array[String]:
 		out.append(c)
 	_shuffle(out)
 	return out
+
+
+## True when this exit is the last chance to reach the minimum number of Elite offers.
+func _elite_due(next: int) -> bool:
+	if next < ELITE_FIRST or next > ELITE_LAST or elite_offers >= ELITE_MIN:
+		return false
+	var chances_left := ELITE_LAST - next + 1
+	return chances_left <= ELITE_MIN - elite_offers
 
 
 func _available_specials(next: int) -> Array[String]:

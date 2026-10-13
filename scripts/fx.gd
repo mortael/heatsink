@@ -112,6 +112,17 @@ func arc(from: Vector2, to: Vector2, life := 0.12) -> void:
 	arcs.append([from, to, life, life])
 
 
+## Bellows Breath: fast round flame blobs that fade from yellow to red.
+func flame(pos: Vector2, vel: Vector2) -> void:
+	_add(pos, vel, randf_range(0.25, 0.4), "circle", Color(1, randf_range(0.45, 0.8), 0.15, 0.8), randf_range(5.0, 9.0), 0.08)
+
+
+## A broken armour plate: one big tumbling shard plus sparks.
+func debris(pos: Vector2, dir: Vector2) -> void:
+	_add(pos, dir * 260.0 + Vector2(0, -80), 0.8, "tri", Color(0.78, 0.8, 0.84), 12.0, 0.05)
+	sparks(pos, dir, 10, Color(1, 0.8, 0.5))
+
+
 func portal(pos: Vector2, time: float) -> void:
 	portals.append([pos, time, time])
 

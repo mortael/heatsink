@@ -151,8 +151,9 @@ func _draw_view() -> void:
 	var info := "KILLS %d   %d:%02d" % [game.kills, int(game.run_time) / 60, int(game.run_time) % 60]
 	view.draw_string(font, Vector2(0, 32), info, HORIZONTAL_ALIGNMENT_RIGHT, s.x - 24, 16, Color(1, 1, 1, 0.85))
 	view.draw_string(font, Vector2(0, 54), "SCRAP %d" % game.scrap, HORIZONTAL_ALIGNMENT_RIGHT, s.x - 24, 16, Color(1, 0.85, 0.35))
+	view.draw_string(font, Vector2(0, 74), "CORES %d" % game.cores, HORIZONTAL_ALIGNMENT_RIGHT, s.x - 24, 16, Color(0.55, 0.95, 1.0))
 	if d.clear_times.size() > 0:
-		view.draw_string(font, Vector2(0, 72), "last clear %.1fs" % d.clear_times[-1], HORIZONTAL_ALIGNMENT_RIGHT, s.x - 24, 12, Color(0.75, 0.75, 0.75))
+		view.draw_string(font, Vector2(0, 92), "last clear %.1fs" % d.clear_times[-1], HORIZONTAL_ALIGNMENT_RIGHT, s.x - 24, 12, Color(0.75, 0.75, 0.75))
 	_draw_route(font, s)
 
 	# Banner
@@ -216,7 +217,8 @@ func _draw_victory(font: Font, s: Vector2) -> void:
 	view.draw_string(font, Vector2(x, y), "STRATUM 1 CLEARED", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(1, 0.85, 0.4))
 	var lines := [
 		"%d rooms  ·  %d kills  ·  %d:%02d" % [game.run.index, game.kills, int(game.run_time) / 60, int(game.run_time) % 60],
-		"Items: %d  ·  Fusions: %d  ·  Scrap left: %d" % [game.inventory.owned.size(), game.inventory.fusions.size(), game.scrap],
+		"Items: %d  ·  Fusions: %d  ·  Elites: %d" % [game.inventory.owned.size(), game.inventory.fusions.size(), game.elites_killed],
+		"Scrap left: %d  ·  Cores left: %d" % [game.scrap, game.cores],
 		"The Stratum boss and Strata 2-4 arrive in later builds.",
 	]
 	for i in lines.size():
@@ -238,6 +240,8 @@ func _draw_items(font: Font) -> void:
 		view.draw_rect(r, Color(0.08, 0.07, 0.06, 0.85))
 		view.draw_rect(r, kc, false, 1.5)
 		view.draw_string(font, Vector2(x, y + 16), abbr.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 26, 11, kc)
+		if inv.is_tempered(id):
+			view.draw_rect(Rect2(x + 3, y + 19, 20, 2), Color(0.55, 0.95, 1.0)) # Anvil mark
 		x += 30.0
 	var line := y + 40.0
 	for kw: String in ItemDB.RESONANCE:
@@ -245,7 +249,8 @@ func _draw_items(font: Font) -> void:
 			view.draw_string(font, Vector2(24, line), "RESONANCE · %s" % kw.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, ItemDB.keyword_color(kw))
 			line += 15.0
 	for f in inv.fusions:
-		view.draw_string(font, Vector2(24, line), "FUSION · %s" % ItemDB.FUSIONS[f].name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.82, 0.3))
+		var forced := "  (forced)" if inv.forged.has(f) else ""
+		view.draw_string(font, Vector2(24, line), "FUSION · %s%s" % [ItemDB.FUSIONS[f].name.to_upper(), forced], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.82, 0.3))
 		line += 15.0
 	for id in inv.owned:
 		if not inv.cursed(id):

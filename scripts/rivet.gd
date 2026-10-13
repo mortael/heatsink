@@ -54,7 +54,7 @@ func _physics_process(delta: float) -> void:
 			dir = dir.bounce(normal)
 			global_position += normal * 2.0
 			if not ricocheted and game.inventory.has("rebound_charge"):
-				pierce += 1
+				pierce += 2 if game.inventory.is_tempered("rebound_charge") else 1
 			ricocheted = true
 			game.fx.sparks(global_position, normal, 5, C.RIVET_GOLD)
 			Sfx.play("ricochet", 0.0, -8.0)
@@ -71,7 +71,7 @@ func _hit_enemy(e: Enemy) -> void:
 	var crit := randf() < inv.crit_chance()
 	var dmg := DAMAGE * (2.0 if crit else 1.0)
 	if ricocheted and inv.has("rebound_charge"):
-		dmg *= 1.5
+		dmg *= 2.0 if inv.is_tempered("rebound_charge") else 1.5
 	e.embed_rivet()
 	inv.on_rivet_hit(e, self, crit) # on-hit effects land before damage, so a killing hit still ignites
 	e.take_damage(dmg, crit, dir * 110.0, "rivet")

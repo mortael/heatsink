@@ -16,11 +16,14 @@ var proc_bonus := 0.0
 var stoked := false # Stoke Altar: Heat cap 120, Overheat +1 s
 var absolution := {} # slagged id -> progress toward its Absolution goal
 var absolved_ids: Array[String] = []
+var tempered: Array[String] = [] # items upgraded at the Anvil
+var forged := {} # fusion id -> the ingredient a Forced Fusion stood in for
 var _static_hits := 0
 
 
+## A Forced Fusion's stand-in counts as owning the missing ingredient's behaviour too.
 func has(id: String) -> bool:
-	return owned.has(id) or fusions.has(id)
+	return owned.has(id) or fusions.has(id) or forged.values().has(id)
 
 
 func count_keyword(kw: String) -> int:
@@ -28,6 +31,9 @@ func count_keyword(kw: String) -> int:
 	for id in owned:
 		if ItemDB.ITEMS[id].keyword == kw and kw != "slagged":
 			n += 1
+	for id: String in forged.values():
+		if not owned.has(id) and ItemDB.ITEMS[id].keyword == kw:
+			n += 1 # a Forced Fusion's stand-in counts toward Resonance
 	return n
 
 
@@ -61,11 +67,61 @@ func add(id: String) -> void:
 ## Drops an item (fed to the Crucible). Fusions that lose an ingredient go with it.
 func remove(id: String) -> void:
 	owned.erase(id)
+	tempered.erase(id)
 	absolution.erase(id)
 	absolved_ids.erase(id)
 	for f in fusions.duplicate():
-		if ItemDB.FUSIONS[f].recipe.has(id):
-			fusions.erase(f)
+		if ItemDB.FUSIONS[f].recipe.has(id) and forged.get(f, "") != id:
+			fusions.erase(f) # a Forced Fusion keeps its paid-for stand-in
+			forged.erase(f)
+	changed.emit()
+
+
+func temper(id: String) -> void:
+	if not tempered.has(id):
+		tempered.append(id)
+	changed.emit()
+
+
+func is_tempered(id: String) -> bool:
+	return tempered.has(id)
+
+
+## Items the Anvil can still temper.
+func temperable() -> Array[String]:
+	var out: Array[String] = []
+	for id in owned:
+		if ItemDB.TEMPER.has(id) and not tempered.has(id):
+			out.append(id)
+	return out
+
+
+## Fusions one ingredient short: a Forced Fusion (3 Cores) stands in for the missing piece.
+func forgeable() -> Array[String]:
+	var out: Array[String] = []
+	for f: String in ItemDB.FUSIONS:
+		if fusions.has(f):
+			continue
+		if _missing(f).size() == 1:
+			out.append(f)
+	return out
+
+
+func _missing(f: String) -> Array[String]:
+	var out: Array[String] = []
+	for part: String in ItemDB.FUSIONS[f].recipe:
+		if not owned.has(part) and not forged.values().has(part):
+			out.append(part)
+	return out
+
+
+func force_fusion(f: String) -> void:
+	var miss := _missing(f)
+	if miss.size() != 1 or fusions.has(f):
+		return
+	forged[f] = miss[0]
+	fusions.append(f)
+	fusion_unlocked.emit(f)
 	changed.emit()
 
 
@@ -125,21 +181,29 @@ func is_fusion_ingredient(id: String) -> bool:
 # ---------------------------------------------------------------- stats
 
 func fire_interval_mult() -> float:
-	return 1.0 / 1.2 if has("bellows_valve") else 1.0
+	if not has("bellows_valve"):
+		return 1.0
+	return 1.0 / (1.35 if is_tempered("bellows_valve") else 1.2)
 
 
 func crit_chance() -> float:
-	return Player.CRIT_CHANCE + (0.1 if has("cinder_lens") else 0.0)
+	if not has("cinder_lens"):
+		return Player.CRIT_CHANCE
+	return Player.CRIT_CHANCE + (0.2 if is_tempered("cinder_lens") else 0.1)
 
 
 func projectile_mult() -> float:
-	return 1.3 if has("long_barrel") else 1.0
+	if not has("long_barrel"):
+		return 1.0
+	return 1.5 if is_tempered("long_barrel") else 1.3
 
 
 func heat_decay_mult() -> float:
 	if cursed("hungry_coal"):
 		return 0.0
-	return 1.3 if has("heat_exchanger") else 1.0
+	if not has("heat_exchanger"):
+		return 1.0
+	return 1.6 if is_tempered("heat_exchanger") else 1.3
 
 
 ## True while a Slagged item's drawback is still in force.
@@ -200,17 +264,21 @@ func _progress(id: String, amount: float) -> void:
 
 
 func dash_recharge_mult() -> float:
-	return 0.8 if has("heat_exchanger") else 1.0
+	if not has("heat_exchanger"):
+		return 1.0
+	return 0.65 if is_tempered("heat_exchanger") else 0.8
 
 
 func vent_cooldown() -> float:
-	return Player.VENT_COOLDOWN - (1.5 if has("coolant_line") else 0.0)
+	if not has("coolant_line"):
+		return Player.VENT_COOLDOWN
+	return Player.VENT_COOLDOWN - (2.5 if is_tempered("coolant_line") else 1.5)
 
 
 func ricochets(hot: bool) -> int:
 	var n := 1 if hot else 0
 	if has("bank_shot"):
-		n += 1
+		n += 2 if is_tempered("bank_shot") else 1
 	if resonance("ricochet"):
 		n += 1
 	return n
@@ -242,7 +310,7 @@ func on_rivet_hit(e: Enemy, rivet: Rivet, crit: bool) -> void:
 		_apply_on_hit(e, rivet.overdrive)
 	if has("static_rivets"):
 		_static_hits += 1
-		if _static_hits % 5 == 0:
+		if _static_hits % (3 if is_tempered("static_rivets") else 5) == 0:
 			chain_arcs(e.global_position, arc_targets(2), 3.0 * C.TILE, 8.0, e)
 
 
@@ -257,7 +325,7 @@ func _apply_on_hit(e: Enemy, hot: bool) -> void:
 	if has("tinder_rounds"):
 		e.add_ignite(1, ignite_cap())
 	if has("pyre_coating") and hot:
-		e.add_ignite(2, ignite_cap())
+		e.add_ignite(3 if is_tempered("pyre_coating") else 2, ignite_cap())
 
 
 func on_kill(e: Enemy) -> void:
@@ -266,11 +334,12 @@ func on_kill(e: Enemy) -> void:
 		_progress("hungry_coal", 1.0)
 	if has("tinder_rounds") and e.ignite_stacks > 1:
 		var share := e.ignite_stacks / 2
-		game.fx.ring(pos, 1.5 * C.TILE, Color(1, 0.5, 0.15, 0.8), 0.2)
-		for o in _enemies_near(pos, 1.5 * C.TILE):
+		var reach := (2.5 if is_tempered("tinder_rounds") else 1.5) * C.TILE
+		game.fx.ring(pos, reach, Color(1, 0.5, 0.15, 0.8), 0.2)
+		for o in _enemies_near(pos, reach):
 			o.add_ignite(share, ignite_cap())
 	if has("frag_lattice") and e.last_depth < SHARD_DEPTH_CAP:
-		var n := shard_count(4)
+		var n := shard_count(6 if is_tempered("frag_lattice") else 4)
 		for i in n:
 			var ang := PI / 4.0 + i * PI / 2.0 if i < 4 else randf() * TAU
 			spawn_shard(pos, Vector2.from_angle(ang), e.last_depth + 1)
@@ -280,7 +349,8 @@ func on_kill(e: Enemy) -> void:
 func on_wall_stop(pos: Vector2, normal: Vector2) -> void:
 	if not has("splinter_heads"):
 		return
-	for a in [-0.5, 0.0, 0.5]:
+	var spread: Array = [-0.6, -0.3, 0.0, 0.3, 0.6] if is_tempered("splinter_heads") else [-0.5, 0.0, 0.5]
+	for a: float in spread:
 		spawn_shard(pos + normal * 4.0, normal.rotated(a), 1)
 
 
@@ -288,9 +358,11 @@ func on_overheat() -> void:
 	if not has("pyre_coating"):
 		return
 	var p: Player = game.player
-	for o in _enemies_near(p.global_position, 4.0 * C.TILE):
-		o.add_ignite(3, ignite_cap())
-	game.fx.ring(p.global_position, 4.0 * C.TILE, Color(1, 0.45, 0.1), 0.3)
+	var big := is_tempered("pyre_coating")
+	var reach := (5.0 if big else 4.0) * C.TILE
+	for o in _enemies_near(p.global_position, reach):
+		o.add_ignite(5 if big else 3, ignite_cap())
+	game.fx.ring(p.global_position, reach, Color(1, 0.45, 0.1), 0.3)
 
 
 ## Called after the nova and rivet bursts have resolved.
@@ -305,12 +377,13 @@ func on_vent(_amount: float) -> void:
 			if a.ignite_stacks != b.ignite_stacks:
 				return a.ignite_stacks > b.ignite_stacks
 			return a.global_position.distance_to(p.global_position) < b.global_position.distance_to(p.global_position))
-		var n := mini(arc_targets(3), cands.size())
+		var big := is_tempered("feedback_coil")
+		var n := mini(arc_targets(5 if big else 3), cands.size())
 		for i in n:
 			var e: Enemy = cands[i]
 			if e.dead:
 				continue
-			var dmg := 10.0 + 5.0 * e.ignite_stacks
+			var dmg := (14.0 if big else 10.0) + 5.0 * e.ignite_stacks
 			e.clear_ignite()
 			game.fx.arc(p.global_position, e.global_position)
 			e.take_damage(dmg, false, Vector2.ZERO, "arc")
