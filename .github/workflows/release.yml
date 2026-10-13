@@ -12,10 +12,6 @@ on:
 env:
   GODOT_VERSION: 4.5.1
 
-concurrency:
-  group: release-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,10 +32,10 @@ jobs:
         run: |
           base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
           mkdir -p ~/godot
-          curl -sSfL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSfL --retry 3 --connect-timeout 30 --max-time 600 -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           unzip -q /tmp/godot.zip -d ~/godot
           mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
-          curl -sSfL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          curl -sSfL --retry 3 --connect-timeout 30 --max-time 1200 -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
           # Only the Windows x86_64 and Web templates; the full set is ~1.3 GB.
@@ -47,7 +43,7 @@ jobs:
           rm /tmp/godot.zip /tmp/templates.tpz
 
       - name: Import project
-        run: timeout 300 ~/godot/godot --headless --import || true
+        run: timeout 300 ~/godot/godot --headless --import
 
       - name: Export Windows
         run: |
@@ -79,7 +75,7 @@ jobs:
 
   release:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -95,6 +91,11 @@ jobs:
         run: |
           tag="build-${{ github.run_number }}"
           sha="${{ github.sha }}"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            # A re-run of this workflow: refresh the assets on the existing release.
+            gh release upload "$tag" dist/*.zip --clobber --repo "${{ github.repository }}"
+            exit 0
+          fi
           gh release create "$tag" dist/*.zip \
             --repo "${{ github.repository }}" \
             --target "$sha" \
@@ -107,11 +108,15 @@ jobs:
 
   pages:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
+    # Only one Pages deploy at a time; a newer queued deploy replaces an older one.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
