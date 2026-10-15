@@ -5,7 +5,7 @@ extends Node2D
 
 const DOOR_TILES := [6, 12, 18] # x of each door slot's centre line, in tiles
 const ENTRY_TILE := Vector2i(12, 11)
-const RIM_RANGE := Lights.BOLT_RADIUS # how far a bolt's light reaches the wall faces
+const RIM_RANGE := 3.0 * C.TILE # how far a bolt light reaches the wall faces (Lights.BOLT_RADIUS)
 const RIM_DEPTH := 14.0 # px a face's glow reaches into the block
 
 var lines: Array[String] = []
@@ -54,10 +54,10 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_rim_lights.clear()
-	if Settings.lights:
-		for bolt: Rivet in get_tree().get_nodes_in_group("bolts"):
-			if bolt.lit:
-				_rim_lights.append([to_local(bolt.global_position), Rivet.color_for(bolt.overdrive or bolt.ricocheted)])
+	# Untyped on purpose: the room-generator test loads Room without the game's autoloads.
+	for bolt: Node2D in get_tree().get_nodes_in_group("bolts"):
+		if bolt.lit: # only true while Lights has a light on it, so off with Lights & shadows off
+			_rim_lights.append([to_local(bolt.global_position), bolt.light_color()])
 	if not _rim_lights.is_empty() or _rim_drawn:
 		_rim.queue_redraw()
 

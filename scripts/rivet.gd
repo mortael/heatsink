@@ -55,14 +55,14 @@ func _physics_process(delta: float) -> void:
 		if hit.is_empty():
 			global_position = to
 			if randf() < 0.5:
-				game.fx.mote(global_position - dir * randf_range(8.0, 30.0), _color())
+				game.fx.mote(global_position - dir * randf_range(8.0, 30.0), light_color())
 			break
 		var hit_pos: Vector2 = hit.position
 		remaining -= global_position.distance_to(hit_pos)
 		global_position = hit_pos
 		var col: Object = hit.collider
 		if col is Enemy:
-			game.fx.impact(hit_pos, -dir, _color())
+			game.fx.impact(hit_pos, -dir, light_color())
 			_hit_enemy(col as Enemy)
 			if pierce > 0:
 				pierce -= 1
@@ -82,7 +82,7 @@ func _physics_process(delta: float) -> void:
 			game.fx.impact(global_position, normal, C.RIVET_GOLD)
 			Sfx.play("ricochet", 0.0, -8.0)
 			continue
-		game.fx.impact(global_position, normal, _color())
+		game.fx.impact(global_position, normal, light_color())
 		game.inventory.on_wall_stop(global_position, normal)
 		queue_free()
 		return
@@ -100,13 +100,13 @@ func _hit_enemy(e: Enemy) -> void:
 	e.take_damage(dmg, crit, dir * 110.0, "rivet")
 
 
-func _color() -> Color:
+func light_color() -> Color:
 	return color_for(overdrive or ricocheted)
 
 
 func _draw() -> void:
 	var hot := overdrive or ricocheted
-	var col := _color()
+	var col := light_color()
 	var length := minf(_travel, 90.0 if hot else 64.0)
 	var side := dir.orthogonal()
 	var tail := -dir * length
