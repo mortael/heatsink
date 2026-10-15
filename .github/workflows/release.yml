@@ -130,7 +130,15 @@ jobs:
             gh release upload "$tag" dist/* --clobber --repo "${{ github.repository }}"
             exit 0
           fi
+          # If a newer build already published (runs can finish out of order), don't let this
+          # older one become "latest": its APK would be a downgrade Android refuses to install.
+          latest=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName 2>/dev/null || true)
+          make_latest=true
+          if [ -n "$latest" ] && [ "${latest#build-}" -gt "${{ github.run_number }}" ] 2>/dev/null; then
+            make_latest=false
+          fi
           gh release create "$tag" dist/* \
+            --latest="$make_latest" \
             --repo "${{ github.repository }}" \
             --target "$sha" \
             --title "HEATSINK build ${{ github.run_number }}" \

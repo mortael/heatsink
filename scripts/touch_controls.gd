@@ -74,6 +74,15 @@ func _input(event: InputEvent) -> void:
 		view.queue_redraw()
 
 
+## Restarting reloads the scene and frees this node, so let go of every action it may
+## still hold; otherwise "restart" stays pressed and the next tap can't trigger it.
+func _exit_tree() -> void:
+	for action in ["restart", "fire", "move_left", "move_right", "move_up", "move_down"]:
+		Input.action_release(action)
+	for action in _button_ids.values():
+		Input.action_release(action)
+
+
 func _process(_delta: float) -> void:
 	if _restart_frames > 0:
 		_restart_frames -= 1
