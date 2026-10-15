@@ -53,6 +53,7 @@ func _ready() -> void:
 	_beam_light.blend_mode = Light2D.BLEND_MODE_ADD
 	_beam_light.enabled = false
 	add_child(_beam_light)
+	add_to_group("dynamic_lights")
 
 
 func _init() -> void:
@@ -229,6 +230,11 @@ func _update_beam_light() -> void:
 	_beam_light.rotation = to.angle()
 	_beam_light.scale = Vector2(maxf(to.length() + 80.0, 1.0) / Glow.TEX_SIZE, 160.0 / Glow.TEX_SIZE)
 	_beam_light.energy = 2.4 * _hum()
+
+
+## Called when the setting is switched off.
+func lights_off() -> void:
+	_beam_light.enabled = false
 
 
 ## Lightsaber hum: a fast shimmer with a little noise.

@@ -54,7 +54,10 @@ func _init() -> void:
 	lights.add_theme_font_size_override("font_size", 20)
 	lights.toggled.connect(func(on: bool) -> void:
 		Settings.lights = on
-		Settings.dirty = true)
+		Settings.dirty = true
+		if not on:
+			# Switch off lights that are mid-flash too; the game may be paused, so they won't fade by themselves.
+			get_tree().call_group("dynamic_lights", "lights_off"))
 	col.add_child(lights)
 	back_button = UiStyle.button("BACK", 0)
 	back_button.pressed.connect(close)

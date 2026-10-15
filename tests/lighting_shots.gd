@@ -13,7 +13,14 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		shot_dir = args[0]
-	DirAccess.make_dir_recursive_absolute(shot_dir)
+	shot_dir = ProjectSettings.globalize_path(shot_dir)
+	if shot_dir.is_relative_path():
+		shot_dir = OS.get_environment("PWD").path_join(shot_dir)
+	var err := DirAccess.make_dir_recursive_absolute(shot_dir)
+	if err != OK:
+		push_error("lighting shots: cannot create %s (error %d)" % [shot_dir, err])
+		get_tree().quit(1)
+		return
 	seed(7)
 	game = load("res://main.tscn").instantiate()
 	add_child(game)

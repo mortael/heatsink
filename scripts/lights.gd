@@ -11,6 +11,7 @@ var _state: Array = [] # per light: [life, max_life, energy]
 
 
 func _ready() -> void:
+	add_to_group("dynamic_lights")
 	for i in POOL:
 		var l := PointLight2D.new()
 		l.texture = Glow.light()
@@ -48,6 +49,11 @@ func clear() -> void:
 	for i in POOL:
 		_lights[i].enabled = false
 		_state[i][0] = 0.0
+
+
+## Called when the setting is switched off.
+func lights_off() -> void:
+	clear()
 
 
 func active_count() -> int:

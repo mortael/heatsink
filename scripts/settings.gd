@@ -18,7 +18,9 @@ func _ready() -> void:
 		volume = clampf(cfg.get_value("audio", "volume", volume), 0.0, 1.0)
 		shake = clampf(cfg.get_value("video", "shake", shake), 0.0, 1.0)
 		fullscreen = cfg.get_value("video", "fullscreen", fullscreen)
-		lights = cfg.get_value("video", "lights", lights)
+		var l: Variant = cfg.get_value("video", "lights", lights)
+		if l is bool:
+			lights = l
 	elif err != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d), using defaults" % [PATH, err])
 	# A browser only allows fullscreen from a click, so the web build never restores it at startup.
