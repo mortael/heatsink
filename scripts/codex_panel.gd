@@ -188,9 +188,10 @@ static func _heat() -> String:
 	t += _c("COLD", C.HEAT_COLD) + " (0-%d): normal rivets.\n" % int(Heat.WARM_AT)
 	t += _c("WARM", C.HEAT_WARM) + " (%d-%d): still normal rivets, but some items only work from Warm up.\n" % [int(Heat.WARM_AT), int(Heat.HOT_AT)]
 	t += _c("HOT", C.HEAT_HOT) + " (%d+): " % int(Heat.HOT_AT) + _c("Overdrive", C.HEAT_HOT) + ". Rivets burn gold, pierce one enemy and ricochet off a wall once. The screen edges glow orange.\n"
-	t += "[/ul]\n"
+	t += "[/ul]"
+	t += _dim("Some items move these lines: Feral Valve starts Overdrive at 60, and a Stoke Altar raises the cap to 120 Heat.") + "\n\n"
 	t += _h("Overheat", C.HEAT_OVER)
-	t += "Reach 100 Heat and you Overheat: the gun locks for %d s, you move 20%% slower and every hit costs 1 extra pip. Afterwards the gauge resets to %d. The gauge flashes red just before it happens.\n\n" % [int(Heat.OVERHEAT_TIME), int(Heat.RESET_AFTER_OVERHEAT)]
+	t += "Reach the cap (100 Heat) and you Overheat: the gun locks for %d s, you move 20%% slower and every hit costs 1 extra pip. Afterwards the gauge resets to %d. The gauge flashes red just before it happens.\n\n" % [int(Heat.OVERHEAT_TIME), int(Heat.RESET_AFTER_OVERHEAT)]
 	t += _h("Vent")
 	t += "Vent dumps all your Heat at once as a nova around you. The more Heat you dump, the bigger and harder it hits: the radius grows from %.1f tiles (cold) to %.1f tiles (full), and damage is 0.6 per point of Heat.\n" % [2.5, 2.5 + 100.0 / 25.0]
 	t += "[ul]"
@@ -226,12 +227,17 @@ static func _items() -> String:
 		t += _c(kw.to_upper(), ItemDB.keyword_color(kw)) + ": " + ItemDB.RESONANCE[kw] + "\n"
 	t += "[/ul]\n"
 
-	var groups := [["conductor", "Conductors"], ["ignite", "Ignite"], ["shrapnel", "Shrapnel"], ["arc", "Arc"], ["ricochet", "Ricochet"]]
+	# Conductors first, then every keyword in the order the items list it; Slagged items get their own section.
+	var groups: Array[String] = ["conductor"]
+	for id: String in ItemDB.ITEMS:
+		var kw: String = ItemDB.ITEMS[id].keyword
+		if kw != "slagged" and not kw in groups:
+			groups.append(kw)
 	for g in groups:
-		t += _h(g[1], ItemDB.keyword_color(g[0]))
+		t += _h("Conductors" if g == "conductor" else g.capitalize(), ItemDB.keyword_color(g))
 		for id: String in ItemDB.ITEMS:
 			var item: Dictionary = ItemDB.ITEMS[id]
-			if item.keyword != g[0]:
+			if item.keyword != g:
 				continue
 			t += _c(item.name, ItemDB.keyword_color(item.keyword)) + "  " + _dim(item.rarity) + "\n"
 			t += "    " + item.desc + "\n"

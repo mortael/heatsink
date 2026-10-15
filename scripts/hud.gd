@@ -142,7 +142,7 @@ func _draw_view() -> void:
 	view.draw_string(font, Vector2(gx - 64, gy - 8), "DASH", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.7))
 	var vx := gx + gw + 24
 	var vready := p.vent_cd <= 0.0
-	var vk: float = 1.0 - p.vent_cd / game.inventory.vent_cooldown()
+	var vk := clampf(1.0 - p.vent_cd / p.vent_cd_total, 0.0, 1.0)
 	view.draw_arc(Vector2(vx + 12, gy + gh * 0.5), 11.0, -PI / 2, -PI / 2 + TAU * vk, 24, Color(1, 0.7, 0.3) if vready else Color(0.5, 0.4, 0.3), 4.0)
 	view.draw_string(font, Vector2(vx + 30, gy + gh * 0.5 + 5), "VENT" if vready else "%.1f" % p.vent_cd, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.9 if vready else 0.5))
 

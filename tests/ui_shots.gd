@@ -17,7 +17,11 @@ func _ready() -> void:
 	shot_dir = ProjectSettings.globalize_path(shot_dir)
 	if shot_dir.is_relative_path():
 		shot_dir = OS.get_environment("PWD").path_join(shot_dir)
-	DirAccess.make_dir_recursive_absolute(shot_dir)
+	var err := DirAccess.make_dir_recursive_absolute(shot_dir)
+	if err != OK:
+		push_error("ui shots: cannot create %s (error %d)" % [shot_dir, err])
+		get_tree().quit(1)
+		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(7)
 	Settings.show_fps = true
@@ -81,7 +85,15 @@ func _img() -> Image:
 
 
 func _shot(name: String) -> void:
-	_img().save_png("%s/%s.png" % [shot_dir, name])
+	_save(_img(), name)
+
+
+func _save(img: Image, name: String) -> void:
+	var path := "%s/%s.png" % [shot_dir, name]
+	var err := img.save_png(path)
+	if err != OK:
+		push_error("ui shots: could not write %s (error %d)" % [path, err])
+		get_tree().quit(1)
 
 
 ## A close-up of the Sink, scaled up 3x.
@@ -91,4 +103,4 @@ func _zoom(name: String) -> void:
 	var r := Rect2i(Vector2i(p) - Vector2i(80, 80), Vector2i(160, 160))
 	var crop := img.get_region(r)
 	crop.resize(480, 480, Image.INTERPOLATE_NEAREST)
-	crop.save_png("%s/%s.png" % [shot_dir, name])
+	_save(crop, name)

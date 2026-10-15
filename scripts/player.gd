@@ -39,6 +39,7 @@ var dash_recharge := 0.0
 var dash_time := 0.0
 var dash_dir := Vector2.RIGHT
 var vent_cd := 0.0
+var vent_cd_total := VENT_COOLDOWN # the cooldown the last Vent started with, for the progress rings
 var invuln := 0.0
 var muzzle := 0.0
 var shots_fired := 0
@@ -260,6 +261,7 @@ func _vent() -> void:
 	else:
 		heat.vent()
 	vent_cd = game.inventory.vent_cooldown()
+	vent_cd_total = vent_cd
 	vents += 1
 	var radius := (2.5 + amount / 25.0) * C.TILE
 	var dmg: float = amount * 0.6 * mult * game.inventory.vent_damage_mult()
@@ -386,7 +388,7 @@ func _draw_vent_ring(a: float) -> void:
 	if game.dead:
 		return
 	if vent_cd > 0.0:
-		var k: float = 1.0 - vent_cd / game.inventory.vent_cooldown()
+		var k := clampf(1.0 - vent_cd / vent_cd_total, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, VENT_RING, 0, TAU, 32, Color(0, 0, 0, 0.35 * a), 3.0)
 		if k > 0.0:
 			draw_arc(Vector2.ZERO, VENT_RING, -PI / 2, -PI / 2 + TAU * k, 32, Color(0.8, 0.52, 0.3, 0.85 * a), 2.5)

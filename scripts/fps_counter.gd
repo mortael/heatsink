@@ -13,6 +13,7 @@ func _ready() -> void:
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	label.position = Vector2(4, 0)
+	label.visible = Settings.show_fps
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", Color(0.75, 1.0, 0.6))
