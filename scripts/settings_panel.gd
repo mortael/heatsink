@@ -24,11 +24,13 @@ func _init() -> void:
 	volume = _slider(col, "Volume", Settings.volume)
 	volume.value_changed.connect(func(v: float) -> void:
 		Settings.volume = v
+		Settings.dirty = true
 		Settings.apply()
 		Sfx.play("shot", 0.0, -6.0))
 	shake = _slider(col, "Screen shake", Settings.shake)
 	shake.value_changed.connect(func(v: float) -> void:
 		Settings.shake = v
+		Settings.dirty = true
 		Settings.apply())
 	fullscreen = CheckButton.new()
 	fullscreen.text = "Fullscreen"
@@ -39,6 +41,7 @@ func _init() -> void:
 	fullscreen.visible = Settings.can_fullscreen()
 	fullscreen.toggled.connect(func(on: bool) -> void:
 		Settings.fullscreen = on
+		Settings.dirty = true
 		Settings.apply())
 	col.add_child(fullscreen)
 	back_button = UiStyle.button("BACK", 0)
@@ -71,6 +74,9 @@ func _slider(parent: Control, text: String, value: float) -> HSlider:
 func open() -> void:
 	volume.set_value_no_signal(Settings.volume)
 	shake.set_value_no_signal(Settings.shake)
+	# Show the real window mode: the browser can leave fullscreen on its own (Esc) or refuse it.
+	if Settings.can_fullscreen():
+		Settings.fullscreen = Settings.is_fullscreen()
 	fullscreen.set_pressed_no_signal(Settings.fullscreen)
 	visible = true
 	volume.grab_focus()

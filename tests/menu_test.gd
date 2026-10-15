@@ -11,6 +11,9 @@ var paused: bool:
 
 func _ready() -> void:
 	tree = get_tree()
+	if ProjectSettings.get_setting("application/run/main_scene") != "res://menu.tscn":
+		_fail("the game's start scene is not the main menu")
+		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Hand "current scene" to a stand-in so changing scenes frees that and leaves this test running.
 	var stand_in := Node.new()

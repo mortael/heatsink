@@ -37,7 +37,10 @@ func _ready() -> void:
 	settings_button.pressed.connect(_show_settings)
 	buttons.add_child(settings_button)
 	quit_button = UiStyle.button("QUIT")
-	quit_button.pressed.connect(func() -> void: get_tree().quit())
+	quit_button.pressed.connect(func() -> void:
+		if Settings.dirty:
+			Settings.save()
+		get_tree().quit())
 	quit_button.visible = not OS.has_feature("web") and not OS.has_feature("mobile")
 	buttons.add_child(quit_button)
 	settings = SettingsPanel.new()
