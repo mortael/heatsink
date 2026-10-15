@@ -10,7 +10,7 @@ Every merge to `main` builds the game on GitHub (`.github/workflows/release.yml`
 - **Windows:** grab `HEATSINK-windows.zip` from the latest [Release](https://github.com/mortael/heatsink/releases/latest), unzip and run `HEATSINK.exe`. It is unsigned, so Windows SmartScreen may ask you to click **More info → Run anyway**.
 - **Android:** open the latest Release on your phone, download `HEATSINK-android.apk` and open it. Android asks once to allow installing apps from your browser. Each build installs over the previous one.
 
-On a touch screen (phone, tablet, or the browser version on one) on-screen controls appear after the first touch: drag on the left half to move, drag on the right half to aim and fire, and tap **DASH**, **VENT** or **USE**. The **II** button at the top right pauses. Tap a card to pick it, and tap anywhere after death to start a new run.
+On a phone or tablet (the app, or the browser version) on-screen controls are shown from the start; on other touch screens they appear after the first touch. In the browser, turn the phone sideways; on Android the first tap also switches to fullscreen landscape. Controls: drag on the left half to move, drag on the right half to aim and fire, and tap **DASH**, **VENT** or **USE**. The **II** button at the top right pauses. Tap a card to pick it, and tap anywhere after death to start a new run.
 
 The export settings live in `export_presets.cfg`. The Web build is single-threaded so it runs on GitHub Pages, which can't send the cross-origin isolation headers threaded builds need. The APK is signed with `ci/heatsink-debug.keystore`, a committed debug key that is fine for sideloading but not for the Play Store.
 
