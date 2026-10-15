@@ -1,11 +1,12 @@
 class_name Lights
 extends Node2D
 ## A small pool of PointLight2D flashes: Vents, kills and slams light up the room for a moment.
-## Only big blasts cast shadows from the walls (one shadowed light at a time keeps phones and the
-## web build fast). Turned off entirely by the "Lights & shadows" setting.
+## Of the flashes, only big blasts cast shadows from the walls, and only the newest one at a time.
+## Turned off entirely by the "Lights & shadows" setting.
 ## A second small pool follows energy bolts in flight, so each bolt lights the floor and walls
-## it passes, and walls and pillars throw shadows away from it. Capped at BOLT_POOL: with more
-## bolts than that, the newest ones carry the lights.
+## it passes, and walls and pillars throw shadows away from it. Capped at BOLT_POOL shadowed
+## lights (about 6% extra frame time on a software renderer): with more bolts than that, the
+## newest ones carry the lights.
 
 const POOL := 8
 const BOLT_POOL := 4
@@ -70,6 +71,11 @@ func clear() -> void:
 		_state[i][0] = 0.0
 	for b in _bolt_lights:
 		b.enabled = false
+	if not is_inside_tree():
+		return
+	for bolt: Rivet in get_tree().get_nodes_in_group("bolts"):
+		bolt.lit = false # brings back their floor wash, even while paused
+		bolt.queue_redraw()
 
 
 ## The bolt lights switched on right now (the lighting screenshots check this).

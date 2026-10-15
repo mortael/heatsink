@@ -50,12 +50,20 @@ func _ready() -> void:
 	_rim.material = Glow.additive()
 	_rim.draw.connect(_draw_rim)
 	add_child(_rim)
+	add_to_group("dynamic_lights")
+
+
+## Called when the Lights & shadows setting changes, also while paused.
+## Drops the rims now; the next frame redraws them if lights are still on.
+func apply_lights() -> void:
+	_rim_lights.clear()
+	_rim.queue_redraw()
 
 
 func _process(_delta: float) -> void:
 	_rim_lights.clear()
 	# Untyped on purpose: the room-generator test loads Room without the game's autoloads.
-	for bolt: Node2D in get_tree().get_nodes_in_group("bolts"):
+	for bolt in get_tree().get_nodes_in_group("bolts"):
 		if bolt.lit: # only true while Lights has a light on it, so off with Lights & shadows off
 			_rim_lights.append([to_local(bolt.global_position), bolt.light_color()])
 	if not _rim_lights.is_empty() or _rim_drawn:
@@ -210,15 +218,25 @@ func _draw_rim() -> void:
 				if not solid[y][x]:
 					continue
 				var o := Vector2(x, y) * t
-				# Each face that borders open floor and has the light in front of it.
-				if p.y < o.y and _open(x, y - 1):
+				# Each face that borders open floor, has the light in front of it and can see it.
+				if p.y < o.y and _open(x, y - 1) and _sees(p, o + Vector2(t * 0.5, -1.0)):
 					_rim_face(p, col, o, o + Vector2(t, 0), Vector2.DOWN)
-				if p.y > o.y + t and _open(x, y + 1):
+				if p.y > o.y + t and _open(x, y + 1) and _sees(p, o + Vector2(t * 0.5, t + 1.0)):
 					_rim_face(p, col, o + Vector2(0, t), o + Vector2(t, t), Vector2.UP)
-				if p.x < o.x and _open(x - 1, y):
+				if p.x < o.x and _open(x - 1, y) and _sees(p, o + Vector2(-1.0, t * 0.5)):
 					_rim_face(p, col, o, o + Vector2(0, t), Vector2.RIGHT)
-				if p.x > o.x + t and _open(x + 1, y):
+				if p.x > o.x + t and _open(x + 1, y) and _sees(p, o + Vector2(t + 1.0, t * 0.5)):
 					_rim_face(p, col, o + Vector2(t, 0), o + Vector2(t, t), Vector2.LEFT)
+
+
+## True when no wall tile lies on the straight line from a to b (sampled every few px).
+func _sees(a: Vector2, b: Vector2) -> bool:
+	var steps := ceili(a.distance_to(b) / 8.0)
+	for i in range(1, steps):
+		var c := Vector2i((a.lerp(b, float(i) / steps) / C.TILE).floor())
+		if not _open(c.x, c.y):
+			return false
+	return true
 
 
 func _open(x: int, y: int) -> bool:
