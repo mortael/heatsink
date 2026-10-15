@@ -105,6 +105,7 @@ func _input(event: InputEvent) -> void:
 			choose(k - KEY_1)
 		elif k == KEY_ESCAPE:
 			cancel()
+			get_viewport().set_input_as_handled() # Esc never falls through to the pause menu
 	if not is_open:
 		return
 	if event.is_action_pressed("ui_left"):
@@ -117,6 +118,8 @@ func _input(event: InputEvent) -> void:
 		choose(selected)
 	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
 		cancel()
+	elif event.is_action_pressed("pause"):
+		get_viewport().set_input_as_handled() # Start never opens the pause menu over the cards
 
 
 func _draw_view() -> void:

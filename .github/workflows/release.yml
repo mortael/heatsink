@@ -54,6 +54,9 @@ jobs:
       - name: Check room generator
         run: timeout 300 ~/godot/godot --headless -s res://tests/room_gen_test.gd -- 2000 1
 
+      - name: Check menus
+        run: timeout 300 ~/godot/godot --headless --path . res://tests/menu_test.tscn
+
       - name: Export Windows
         run: |
           mkdir -p build/windows

@@ -5,13 +5,14 @@ config_version=5
 
 config/name="HEATSINK"
 config/description="Prototype: Riveter, Heat, Vent, Clinkers"
-run/main_scene="res://main.tscn"
+run/main_scene="res://menu.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
 
 Juice="*res://scripts/juice.gd"
 Sfx="*res://scripts/sfx.gd"
+Settings="*res://scripts/settings.gd"
 
 [display]
 

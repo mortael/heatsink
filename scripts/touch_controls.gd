@@ -10,6 +10,8 @@ const DEADZONE := 0.25
 const BUTTON_R := 46.0
 const MOVE_REST := Vector2(180, 560)
 const AIM_REST := Vector2(960, 540)
+const PAUSE_POS := Vector2(1224, 112)
+const PAUSE_R := 28.0
 const BUTTONS := [
 	{"action": "vent", "label": "VENT", "pos": Vector2(1196, 452)},
 	{"action": "dash", "label": "DASH", "pos": Vector2(1196, 580)},
@@ -77,13 +79,29 @@ func _input(event: InputEvent) -> void:
 ## Restarting reloads the scene and frees this node, so let go of every action it may
 ## still hold; otherwise "restart" stays pressed and the next tap can't trigger it.
 func _exit_tree() -> void:
+	_release_all()
+
+
+## Lets go of the sticks and buttons, e.g. before the pause menu opens over them.
+func _release_all() -> void:
 	for action in ["restart", "fire", "move_left", "move_right", "move_up", "move_down"]:
 		Input.action_release(action)
 	for action in _button_ids.values():
 		Input.action_release(action)
+	_button_ids.clear()
+	_move_id = -1
+	_move_vec = Vector2.ZERO
+	_move_origin = MOVE_REST
+	_aim_id = -1
+	_aim_vec = Vector2.ZERO
+	_aim_origin = AIM_REST
+	aim = Vector2.ZERO
+	view.queue_redraw()
 
 
 func _process(_delta: float) -> void:
+	if active:
+		view.queue_redraw() # menus and the Death Ledger come and go without a touch
 	if _restart_frames > 0:
 		_restart_frames -= 1
 		if _restart_frames == 0:
@@ -96,8 +114,13 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		Input.action_press("restart")
 		_restart_frames = 2
 		return
-	if game.picker.is_open:
-		return # the picker reads the emulated mouse click
+	if game.picker.is_open or game.pause_menu.is_open:
+		return # those menus read the emulated mouse click
+	if pos.distance_to(PAUSE_POS) <= PAUSE_R * 1.5:
+		if game.can_pause():
+			_release_all()
+			game.pause_menu.open()
+		return
 	for b in BUTTONS:
 		if pos.distance_to(b.pos) <= BUTTON_R * 1.25:
 			_button_ids[index] = b.action
@@ -161,8 +184,12 @@ func _set_strength(action: String, s: float) -> void:
 
 
 func _draw_view() -> void:
-	if game.dead or game.victory or game.picker.is_open:
+	if game.dead or game.victory or game.picker.is_open or game.pause_menu.is_open:
 		return
+	view.draw_circle(PAUSE_POS, PAUSE_R, Color(1, 1, 1, 0.07))
+	view.draw_arc(PAUSE_POS, PAUSE_R, 0, TAU, 32, Color(1, 1, 1, 0.25), 2.0, true)
+	for dx in [-6.0, 6.0]:
+		view.draw_rect(Rect2(PAUSE_POS + Vector2(dx - 3, -10), Vector2(6, 20)), Color(1, 1, 1, 0.6))
 	_draw_stick(_move_origin, _move_vec, _move_id != -1)
 	_draw_stick(_aim_origin, _aim_vec, _aim_id != -1)
 	var font := ThemeDB.fallback_font

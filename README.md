@@ -10,7 +10,7 @@ Every merge to `main` builds the game on GitHub (`.github/workflows/release.yml`
 - **Windows:** grab `HEATSINK-windows.zip` from the latest [Release](https://github.com/mortael/heatsink/releases/latest), unzip and run `HEATSINK.exe`. It is unsigned, so Windows SmartScreen may ask you to click **More info → Run anyway**.
 - **Android:** open the latest Release on your phone, download `HEATSINK-android.apk` and open it. Android asks once to allow installing apps from your browser. Each build installs over the previous one.
 
-On a touch screen (phone, tablet, or the browser version on one) on-screen controls appear after the first touch: drag on the left half to move, drag on the right half to aim and fire, and tap **DASH**, **VENT** or **USE**. Tap a card to pick it, and tap anywhere after death to start a new run.
+On a touch screen (phone, tablet, or the browser version on one) on-screen controls appear after the first touch: drag on the left half to move, drag on the right half to aim and fire, and tap **DASH**, **VENT** or **USE**. The **II** button at the top right pauses. Tap a card to pick it, and tap anywhere after death to start a new run.
 
 The export settings live in `export_presets.cfg`. The Web build is single-threaded so it runs on GitHub Pages, which can't send the cross-origin isolation headers threaded builds need. The APK is signed with `ci/heatsink-debug.keystore`, a committed debug key that is fine for sideloading but not for the Play Store.
 
@@ -18,7 +18,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 1. Install Godot 4.5.1 (standard build, not .NET).
 2. Open Godot, click **Import**, and pick `project.godot` in this folder.
-3. Press **F5** (or the Play button).
+3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Settings** (volume, screen shake, fullscreen; saved between sessions) and **Quit** (not shown in the browser).
 
 ## Controls
 
@@ -30,7 +30,9 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 | Dash | Space / Shift | Left bumper |
 | Vent | Right mouse / Q | Left trigger |
 | Use (shop, altar, crucible) | E / F | A |
+| Pause (resume, settings, main menu) | Esc / P | Start |
 | Restart after death | R | Start |
+| Main menu after death | Esc | |
 
 ## What to try
 
@@ -101,8 +103,12 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/door.gd` | Doors that preview the next room |
 | `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
+| `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
+| `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
+| `scripts/settings.gd`, `scripts/ui_style.gd` | Saved settings (autoload) and the menu look |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
+| `tests/menu_test.tscn` | Walks menu → settings → run → pause → menu and fails if a step doesn't work |
 
 Automated playtest (headless):
 
@@ -116,4 +122,10 @@ Room generator check (exits with code 1 on a bad room):
 
 ```
 godot --headless --path . -s res://tests/room_gen_test.gd -- 2000 1
+```
+
+Menu check (exits with code 1 if a menu step fails):
+
+```
+godot --headless --path . res://tests/menu_test.tscn
 ```

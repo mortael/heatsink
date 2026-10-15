@@ -24,6 +24,7 @@ var hud: Hud
 var director: Director
 var inventory: Inventory
 var picker: Picker
+var pause_menu: PauseMenu
 var touch: TouchControls
 var run: RunMap
 
@@ -82,6 +83,9 @@ func _ready() -> void:
 	picker.game = self
 	add_child(picker)
 	picker.chosen.connect(_on_picked)
+	pause_menu = PauseMenu.new()
+	pause_menu.game = self
+	add_child(pause_menu)
 	touch = TouchControls.new()
 	touch.game = self
 	add_child(touch)
@@ -91,6 +95,11 @@ func _ready() -> void:
 
 func in_transition() -> bool:
 	return _transition > 0.0
+
+
+## The pause menu opens mid-run, never over the reward cards or the Death Ledger.
+func can_pause() -> bool:
+	return not dead and not victory and not picker.is_open
 
 
 # ---------------------------------------------------------------- rooms
@@ -183,6 +192,9 @@ func _process(delta: float) -> void:
 	elif Input.is_action_just_pressed("restart"):
 		Juice.reset()
 		get_tree().reload_current_scene()
+		return
+	elif Input.is_action_just_pressed("pause") and not Input.is_action_just_pressed("restart"):
+		pause_menu.to_menu()
 		return
 	if _transition > 0.0:
 		_transition -= delta
@@ -593,6 +605,7 @@ func _setup_input() -> void:
 	_key_action("move_down", [KEY_S, KEY_DOWN])
 	_key_action("dash", [KEY_SPACE, KEY_SHIFT])
 	_key_action("restart", [KEY_R])
+	_key_action("pause", [KEY_ESCAPE, KEY_P])
 	_key_action("fire", [])
 	_key_action("vent", [KEY_Q])
 	_mouse_action("fire", MOUSE_BUTTON_LEFT)
@@ -605,6 +618,7 @@ func _setup_input() -> void:
 	_axis_action("vent", JOY_AXIS_TRIGGER_LEFT, 1.0)
 	_button_action("dash", JOY_BUTTON_LEFT_SHOULDER)
 	_button_action("restart", JOY_BUTTON_START)
+	_button_action("pause", JOY_BUTTON_START)
 	_key_action("interact", [KEY_E, KEY_F])
 	_button_action("interact", JOY_BUTTON_A)
 
