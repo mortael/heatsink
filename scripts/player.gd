@@ -126,6 +126,10 @@ func _update_aim() -> void:
 	if stick.length() > 0.35:
 		aim_dir = stick.normalized()
 		return
+	if game.touch and game.touch.active:
+		if game.touch.aim != Vector2.ZERO:
+			aim_dir = game.touch.aim
+		return
 	var to_mouse := get_global_mouse_position() - global_position
 	if to_mouse.length() > 4.0:
 		aim_dir = to_mouse.normalized()

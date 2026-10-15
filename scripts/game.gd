@@ -25,6 +25,7 @@ var director: Director
 var inventory: Inventory
 var picker: Picker
 var pause_menu: PauseMenu
+var touch: TouchControls
 var run: RunMap
 
 var dead := false
@@ -85,6 +86,9 @@ func _ready() -> void:
 	pause_menu = PauseMenu.new()
 	pause_menu.game = self
 	add_child(pause_menu)
+	touch = TouchControls.new()
+	touch.game = self
+	add_child(touch)
 	run = RunMap.new(randi())
 	_build_room("combat_item")
 
