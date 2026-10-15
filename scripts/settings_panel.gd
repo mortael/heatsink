@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends PanelContainer
-## Volume, screen shake, fullscreen and lights. Used by the main menu and the pause menu.
+## Volume, screen shake, fullscreen, lights and the FPS counter. Used by the main menu and the pause menu.
 ## Changes apply at once and are saved when you leave the panel.
 
 signal back
@@ -9,6 +9,7 @@ var volume: HSlider
 var shake: HSlider
 var fullscreen: CheckButton
 var lights: CheckButton
+var fps: CheckButton
 var back_button: Button
 
 
@@ -58,6 +59,17 @@ func _init() -> void:
 		# Apply at once: the game may be paused behind this panel, so nothing would update by itself.
 		get_tree().call_group("dynamic_lights", "apply_lights"))
 	col.add_child(lights)
+	fps = CheckButton.new()
+	fps.text = "Show FPS"
+	fps.tooltip_text = "Frames per second in the top-left corner."
+	fps.button_pressed = Settings.show_fps
+	fps.focus_mode = Control.FOCUS_ALL
+	fps.custom_minimum_size = Vector2(0, 44)
+	fps.add_theme_font_size_override("font_size", 20)
+	fps.toggled.connect(func(on: bool) -> void:
+		Settings.show_fps = on
+		Settings.dirty = true)
+	col.add_child(fps)
 	back_button = UiStyle.button("BACK", 0)
 	back_button.pressed.connect(close)
 	col.add_child(back_button)
@@ -93,6 +105,7 @@ func open() -> void:
 		Settings.fullscreen = Settings.is_fullscreen()
 	fullscreen.set_pressed_no_signal(Settings.fullscreen)
 	lights.set_pressed_no_signal(Settings.lights)
+	fps.set_pressed_no_signal(Settings.show_fps)
 	visible = true
 	volume.grab_focus()
 

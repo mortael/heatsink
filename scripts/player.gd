@@ -20,6 +20,8 @@ const DASH_QUENCH := 10.0
 
 const VENT_COOLDOWN := 6.0
 const VENT_MULT := 1.0 # Riveter
+const VENT_READY_FLASH := 0.4
+const VENT_RING := RADIUS + 5.0 # cooldown / ready ring around the Sink
 const RIVET_BURST_DAMAGE := 10.0
 const TENSION_PER_RIVET := 0.05
 
@@ -37,10 +39,13 @@ var dash_recharge := 0.0
 var dash_time := 0.0
 var dash_dir := Vector2.RIGHT
 var vent_cd := 0.0
+var vent_cd_total := VENT_COOLDOWN # the cooldown the last Vent started with, for the progress rings
 var invuln := 0.0
 var muzzle := 0.0
 var shots_fired := 0
 var vents := 0
+var vent_ready_flash := 0.0 # 1 -> 0 over VENT_READY_FLASH s once the Vent comes off cooldown
+var _vent_was_ready := true
 var lamp: PointLight2D # the Sink's own light: walls cast moving shadows around you
 
 # Bot hooks used by the automated playtest.
@@ -101,6 +106,11 @@ func _physics_process(delta: float) -> void:
 	heat.tick(delta)
 	fire_cd -= delta
 	vent_cd = maxf(0.0, vent_cd - delta)
+	# Checked by state, not by the timer's last step: a Heat Engine refund can also finish the cooldown.
+	if vent_cd <= 0.0 and not _vent_was_ready:
+		_on_vent_ready()
+	_vent_was_ready = vent_cd <= 0.0
+	vent_ready_flash = maxf(0.0, vent_ready_flash - delta / VENT_READY_FLASH)
 	invuln = maxf(0.0, invuln - delta)
 	muzzle = maxf(0.0, muzzle - delta)
 	if dash_charges < DASH_MAX:
@@ -251,6 +261,7 @@ func _vent() -> void:
 	else:
 		heat.vent()
 	vent_cd = game.inventory.vent_cooldown()
+	vent_cd_total = vent_cd
 	vents += 1
 	var radius := (2.5 + amount / 25.0) * C.TILE
 	var dmg: float = amount * 0.6 * mult * game.inventory.vent_damage_mult()
@@ -322,6 +333,13 @@ func take_hit(amount: int, source: String) -> void:
 		game.on_player_died()
 
 
+## The Vent is back: a bright ring snaps out from the Sink with a soft chime.
+func _on_vent_ready() -> void:
+	vent_ready_flash = 1.0
+	if not bot:
+		Sfx.play("band", 12.0, -16.0)
+
+
 func _on_band_changed(new_band: int, old_band: int) -> void:
 	if new_band == Heat.Band.OVERHEAT:
 		return
@@ -361,3 +379,23 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, RADIUS, Color(0.2, 0.21, 0.23, a))
 	draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 24, Color(C.STEEL, a), 2.0)
 	draw_circle(Vector2.ZERO, 7.0, Color(core, a))
+	_draw_vent_ring(a)
+
+
+## Vent readiness on the Sink itself, so you never have to look at the HUD:
+## cooling down, a dim ring fills clockwise from the top; ready, a full orange ring breathes slowly.
+func _draw_vent_ring(a: float) -> void:
+	if game.dead:
+		return
+	if vent_cd > 0.0:
+		var k := clampf(1.0 - vent_cd / vent_cd_total, 0.0, 1.0)
+		draw_arc(Vector2.ZERO, VENT_RING, 0, TAU, 32, Color(0, 0, 0, 0.35 * a), 3.0)
+		if k > 0.0:
+			draw_arc(Vector2.ZERO, VENT_RING, -PI / 2, -PI / 2 + TAU * k, 32, Color(0.8, 0.52, 0.3, 0.85 * a), 2.5)
+		return
+	var breathe := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+	draw_arc(Vector2.ZERO, VENT_RING, 0, TAU, 32, Color(1, 0.6, 0.2, (0.18 + 0.12 * breathe) * a), 6.0)
+	draw_arc(Vector2.ZERO, VENT_RING, 0, TAU, 32, Color(1, 0.75, 0.35, (0.75 + 0.25 * breathe) * a), 2.5)
+	if vent_ready_flash > 0.0:
+		var f := vent_ready_flash
+		draw_arc(Vector2.ZERO, VENT_RING + 22.0 * (1.0 - f), 0, TAU, 32, Color(1, 0.85, 0.55, f * a), 2.0 + 3.0 * f)

@@ -1,6 +1,6 @@
 class_name MainMenu
 extends Control
-## Title screen: Start, Settings and Quit (Quit is hidden in the browser and on phones).
+## Title screen: Start, Codex, Settings and Quit (Quit is hidden in the browser and on phones).
 ## Works with mouse, touch, keys (arrows + Enter) and a pad (d-pad + A, B backs out).
 
 const GAME_SCENE := "res://main.tscn"
@@ -8,9 +8,11 @@ const EMBERS := 70
 
 var buttons: VBoxContainer
 var start_button: Button
+var codex_button: Button
 var settings_button: Button
 var quit_button: Button
 var settings: SettingsPanel
+var codex: CodexPanel
 var _embers: Array[Vector4] = [] # x, y, speed, size
 var _t := 0.0
 
@@ -33,6 +35,10 @@ func _ready() -> void:
 	start_button = UiStyle.button("START RUN")
 	start_button.pressed.connect(start_run)
 	buttons.add_child(start_button)
+	codex_button = UiStyle.button("CODEX")
+	codex_button.tooltip_text = "How to play: Heat, Vent, items, enemies and rooms"
+	codex_button.pressed.connect(_show_codex)
+	buttons.add_child(codex_button)
 	settings_button = UiStyle.button("SETTINGS")
 	settings_button.pressed.connect(_show_settings)
 	buttons.add_child(settings_button)
@@ -47,6 +53,15 @@ func _ready() -> void:
 	settings.visible = false
 	settings.back.connect(_hide_settings)
 	center.add_child(settings)
+	# The Codex is bigger than the space under the title, so it gets the whole screen.
+	var full := CenterContainer.new()
+	full.set_anchors_preset(Control.PRESET_FULL_RECT)
+	full.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(full)
+	codex = CodexPanel.new()
+	codex.visible = false
+	codex.back.connect(_hide_codex)
+	full.add_child(codex)
 	start_button.grab_focus()
 
 
@@ -65,11 +80,24 @@ func _hide_settings() -> void:
 	settings_button.grab_focus()
 
 
+func _show_codex() -> void:
+	buttons.visible = false
+	codex.open()
+	queue_redraw()
+
+
+func _hide_codex() -> void:
+	buttons.visible = true
+	codex_button.grab_focus()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# A pad or key press with nothing focused (after a mouse or touch tap elsewhere) refocuses the menu.
 	if (event is InputEventKey or event is InputEventJoypadButton) and get_viewport().gui_get_focus_owner() == null:
 		if settings.visible:
 			settings.volume.grab_focus()
+		elif codex.visible:
+			codex.tabs[codex.page].grab_focus()
 		else:
 			start_button.grab_focus()
 
@@ -99,6 +127,8 @@ func _draw() -> void:
 		var a := clampf(e.y * 1.4, 0.0, 1.0) * (0.5 + 0.5 * sin(_t * 3.0 + e.x * 40.0))
 		draw_circle(Vector2(e.x * s.x, e.y * s.y), e.w, Color(1.0, 0.55 + 0.3 * e.w / 3.0, 0.2, a * 0.8))
 
+	if codex.visible:
+		return
 	# Title, with a heat gauge that slowly fills and vents underneath it.
 	var ty := s.y * 0.5 - 150
 	var title := "HEATSINK"
