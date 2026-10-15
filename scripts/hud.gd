@@ -216,7 +216,7 @@ func _draw_victory(font: Font, s: Vector2) -> void:
 	var y := box.position.y + 50
 	view.draw_string(font, Vector2(x, y), "STRATUM 1 CLEARED", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(1, 0.85, 0.4))
 	var lines := [
-		"%d rooms  ·  %d kills  ·  %d:%02d" % [game.run.index, game.kills, int(game.run_time) / 60, int(game.run_time) % 60],
+		"%s  ·  %d rooms  ·  %d kills  ·  %d:%02d" % [Difficulty.level_name(), game.run.index, game.kills, int(game.run_time) / 60, int(game.run_time) % 60],
 		"Items: %d  ·  Fusions: %d  ·  Elites: %d" % [game.inventory.owned.size(), game.inventory.fusions.size(), game.elites_killed],
 		"Scrap left: %d  ·  Cores left: %d" % [game.scrap, game.cores],
 		"The Stratum boss and Strata 2-4 arrive in later builds.",

@@ -1,6 +1,6 @@
 # HEATSINK prototype
 
-Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, three enemies (Clinker, Linesman, Forgewarden), items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
+Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, six enemies (Clinker, Sparkhound, Slagspitter, Slag Mortar, Linesman, Forgewarden), five difficulty levels, items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
 
 ## Download a build
 
@@ -56,6 +56,22 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
   - *Forced Fusion* (3 Cores) completes a Fusion you're one ingredient short of. The Fusion also gives you that ingredient's effect.
 - A Cooling Vault is now a choice between the Cooling Bath (repair 2 pips) and the Anvil. A Stoke Altar shows up in 1 of every 3 Vaults as a separate option.
 
+## Difficulty and new enemies
+
+START RUN asks how hot you run; the choice is remembered. WARM is the original balance.
+
+| Level | What changes | Bot deaths (24 runs) |
+| --- | --- | --- |
+| COLD | 70% of the enemies, 85% HP, specials later, fewer Elite doors | 0% |
+| WARM | The original balance | 0% |
+| HOT | 1.5x enemies, +1 wave per room, waves overlap sooner, specials earlier, Clinkers surround you | 17% |
+| SEARING | 1.85x enemies, +2 waves that pile up, +15% HP, at least 3 Elite doors, Slagspitters aim ahead | 46% |
+| MELTDOWN | 2.1x enemies, +2 waves, +25% HP, two Forgewardens at the Gate | 67% |
+
+- **Sparkhound** (chaser, from room 2): a fast low hound. It plants its feet while an orange arrow shows its lane for 0.55 s, then rushes 6 tiles. Step sideways or dash; a missed rush leaves it skidding for 0.9 s.
+- **Slagspitter** (zoner, from room 4): keeps 5-8 tiles away. Five dotted cyan lanes show for 0.6 s, then five slow slag bolts fly along them.
+- **Slag Mortar** (artillery, from room 5): a tracked kiln that backs away. A red ring marks where its shell lands and fills in during the 1.1 s flight.
+
 ## Items (vertical slice step 1)
 
 After each room you pick 1 of 3 salvage cards. There are 13 items across the three synergy tiers:
@@ -89,6 +105,8 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/rivet.gd` | Projectile with embed, pierce and ricochet |
 | `scripts/enemy.gd`, `scripts/clinker.gd` | Enemy base and the Clinker fodder |
 | `scripts/linesman.gd` | Linesman: Tether beam and Snap Back |
+| `scripts/sparkhound.gd`, `scripts/slagspitter.gd`, `scripts/slag_bolt.gd`, `scripts/slag_mortar.gd` | Sparkhound, Slagspitter and its bolts, Slag Mortar and its shells |
+| `scripts/difficulty.gd`, `scripts/difficulty_panel.gd` | The five difficulty levels and the picker after START RUN |
 | `scripts/forgewarden.gd`, `scripts/molten_patch.gd` | Forgewarden Elite: armour, Hammerfall, Bellows Breath, Molten floor |
 | `scripts/director.gd` | Wave plans from Threat Point budgets, Elite rooms, portal warnings |
 | `scripts/juice.gd`, `scripts/sfx.gd`, `scripts/fx.gd` | Hit-stop, shake, synthesized sound, particles |
@@ -120,7 +138,7 @@ Automated playtest (headless):
 godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 x
 ```
 
-Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
+Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. Add `diff=0` to `diff=4` to play COLD to MELTDOWN (default WARM). The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
 
 Room generator check (exits with code 1 on a bad room):
 

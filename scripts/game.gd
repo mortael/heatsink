@@ -145,6 +145,7 @@ func _build_room(kind: String) -> void:
 		doors.append(d)
 	var info: Dictionary = RunMap.KINDS[kind]
 	var label := "ROOM %d / %d" % [run.index, RunMap.GATE] if kind != "gate" else "THE GATE"
+	label += "  ·  " + Difficulty.level_name()
 	hud.banner(info.name, label)
 	if RunMap.is_combat(kind):
 		director.start_room(run.index, kind if kind == "gate" or kind == "elite" else "combat")
@@ -594,7 +595,7 @@ func ledger_lines() -> Array:
 		lines.append("Risk taken: overheated, so every hit cost +1 pip")
 	for r in inventory.active_risks():
 		lines.append("Risk taken: " + r)
-	lines.append("Room %d of %d (%s)  ·  %d kills  ·  %d:%02d" % [run.index, RunMap.GATE, RunMap.KINDS[room_kind].name.capitalize(), kills, int(run_time) / 60, int(run_time) % 60])
+	lines.append("Room %d of %d (%s)  ·  %s  ·  %d kills  ·  %d:%02d" % [run.index, RunMap.GATE, RunMap.KINDS[room_kind].name.capitalize(), Difficulty.level_name(), kills, int(run_time) / 60, int(run_time) % 60])
 	lines.append("Overheats this run: %d  ·  Vents: %d  ·  Scrap: %d" % [player.heat.overheat_count, player.vents, scrap])
 	return lines
 

@@ -274,6 +274,12 @@ static func _enemies() -> String:
 	t += _c("cyan", C.TELE_LINE) + " is a line or beam, " + _c("violet", C.TELE_STATE) + " is a warning that something is about to change.\n\n"
 	t += _h("Clinker", C.TELE_MELEE)
 	t += "Fodder that comes in packs. Its mouth glows orange and it squashes down for %.1f s, then it lunges %d tiles. It stops tracking you just before the lunge, so dash through it or step aside. Clinkers sometimes drop Scrap.\n\n" % [Clinker.WINDUP, int(Clinker.LUNGE_DIST / C.TILE)]
+	t += _h("Sparkhound", C.TELE_MELEE)
+	t += "A fast, low hound (from room 2). It plants its feet while an " + _c("orange arrow", C.TELE_MELEE) + " shows its lane for %.2f s, then rushes %d tiles. Step sideways or dash; a missed rush leaves it skidding for %.1f s.\n\n" % [Sparkhound.AIM, int(Sparkhound.RUSH_DIST / C.TILE), Sparkhound.SKID]
+	t += _h("Slagspitter", C.TELE_LINE)
+	t += "A squat crucible on legs (from room 4) that keeps %d-%d tiles away. Five dotted " % [int(Slagspitter.KEEP_MIN / C.TILE), int(Slagspitter.KEEP_MAX / C.TILE)] + _c("cyan lanes", C.TELE_LINE) + " show for %.1f s, then five slow slag bolts fly along them. Stand between the lanes or dash through.\n\n" % Slagspitter.AIM
+	t += _h("Slag Mortar", C.TELE_GROUND)
+	t += "A tracked kiln (from room 5) that backs away from you. A " + _c("red ring", C.TELE_GROUND) + " on the floor marks where its shell lands and fills in during the %.1f s flight. Leave the ring.\n\n" % SlagMortar.MortarShell.FLIGHT
 	t += _h("Linesman", C.TELE_LINE)
 	t += "A tall drone (from room 3) that is harmless on its own and keeps %d-%d tiles away. It draws a dotted " % [int(Linesman.KEEP_MIN / C.TILE), int(Linesman.KEEP_MAX / C.TILE)]
 	t += _c("violet", C.TELE_STATE) + " line to a nearby enemy, and %.1f s later the line becomes a " % Linesman.TETHER_AIM + _c("cyan beam", C.TELE_LINE)
