@@ -12,6 +12,8 @@ const REROLL_PRICE := 15
 const REROLL_STEP := 10
 const ALTAR_CHANCE := 1.0 / 3.0 # Altars sit in 1 of every 3 Cooling Vaults (GDD section 4)
 const SLAGGED_SLOT := 0.2 # elite rewards: chance per card to be a Slagged item
+const TEMPLATE_CHANCE := 0.25 # combat rooms: chance of a hand-authored layout instead of a generated one
+const ELITE_DENSITY := 0.7 # generated Elite rooms get less cover so the Forgewarden can turn
 
 var world: Node2D
 var room: Room
@@ -142,6 +144,10 @@ func _pick_layout(kind: String) -> Array:
 		return Layouts.HALL
 	if kind == "gate" or run.index == 1:
 		return Layouts.COMBAT[0]
+	if randf() >= TEMPLATE_CHANCE:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = randi()
+		return RoomGen.generate(rng, ELITE_DENSITY if kind == "elite" else 1.0)
 	for attempt in 8:
 		var lines := Layouts.variant(Layouts.COMBAT.pick_random(), randf() < 0.5, randf() < 0.5)
 		var probe := Room.new(lines)
