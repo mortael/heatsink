@@ -169,7 +169,7 @@ func _draw_view() -> void:
 
 	# Controls hint during the first room
 	if game.run.index <= 1 and not game.dead:
-		var hint := "WASD move  ·  Mouse aim  ·  LMB fire  ·  Space dash  ·  RMB vent  ·  E use      (pad: sticks, RT, LB, LT, A)"
+		var hint := "WASD move  ·  Mouse aim  ·  LMB fire  ·  Space dash  ·  RMB vent  ·  E use  ·  Esc pause      (pad: sticks, RT, LB, LT, A, Start)"
 		view.draw_string(font, Vector2(0, s.y - 8), hint, HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, Color(1, 1, 1, 0.55))
 
 	if game.dead:
@@ -223,7 +223,7 @@ func _draw_victory(font: Font, s: Vector2) -> void:
 	]
 	for i in lines.size():
 		view.draw_string(font, Vector2(x, y + 44 + i * 28), lines[i], HORIZONTAL_ALIGNMENT_LEFT, w - 56, 17, Color(0.92, 0.9, 0.88))
-	view.draw_string(font, Vector2(x, box.end.y - 24), "Press R (or Start) to start a new run", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.7))
+	view.draw_string(font, Vector2(x, box.end.y - 24), "R (or Start): new run   ·   Esc: main menu", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.7))
 
 
 ## Owned items as small keyword-coloured chips, then active Resonance and Fusions.
@@ -273,4 +273,4 @@ func _draw_ledger(font: Font, s: Vector2) -> void:
 	var lines: Array = game.ledger_lines()
 	for i in lines.size():
 		view.draw_string(font, Vector2(x, y + 44 + i * 28), lines[i], HORIZONTAL_ALIGNMENT_LEFT, w - 56, 17, Color(0.92, 0.9, 0.88))
-	view.draw_string(font, Vector2(x, box.end.y - 24), "Press R (or Start) to cast a new Sink", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.7))
+	view.draw_string(font, Vector2(x, box.end.y - 24), "R (or Start): cast a new Sink   ·   Esc: main menu", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.7))
