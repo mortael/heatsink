@@ -62,6 +62,7 @@ func _ready() -> void:
 	world = Node2D.new()
 	add_child(world)
 	add_child(Ambience.new())
+	add_child(Bloom.new())
 	fx = Fx.new()
 	fx.z_index = 6
 	world.add_child(fx)

@@ -23,6 +23,7 @@ func _ready() -> void:
 		return
 	seed(7)
 	Settings.lights = true # a saved "off" on this machine must not hide what the shots are for
+	Settings.bloom = true
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 
