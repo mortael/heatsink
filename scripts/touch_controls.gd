@@ -2,8 +2,8 @@ class_name TouchControls
 extends CanvasLayer
 ## On-screen twin-stick for touch screens (Android, phones and tablets in the browser).
 ## Left half: a floating move stick. Right half: a floating aim stick that fires while pushed.
-## Buttons for Dash, Vent and Use sit on the right edge. Hidden until the first touch,
-## so mouse and keyboard players never see it. Feeds the same input actions as the keyboard.
+## Buttons for Dash, Vent and Use sit on the right edge. Shown from the start on phones and
+## tablets; elsewhere hidden until the first touch, so mouse and keyboard players never see it. Feeds the same input actions as the keyboard.
 
 const STICK_R := 80.0
 const DEADZONE := 0.25
@@ -40,7 +40,8 @@ func _ready() -> void:
 	view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.draw.connect(_draw_view)
-	view.visible = false
+	# Phones and tablets show the sticks straight away so players know they can touch.
+	view.visible = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 	add_child(view)
 
 
@@ -100,7 +101,7 @@ func _release_all() -> void:
 
 
 func _process(_delta: float) -> void:
-	if active:
+	if view.visible:
 		view.queue_redraw() # menus and the Death Ledger come and go without a touch
 	if _restart_frames > 0:
 		_restart_frames -= 1
