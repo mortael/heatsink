@@ -10,15 +10,12 @@ func _init() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(args[1]) if args.size() > 1 else 1
 	var failures := 0
-	var fallbacks := 0
 	var seen := {}
 	var walls_total := 0
 	var started := Time.get_ticks_usec()
 	for i in count:
 		var density := 0.7 if i % 4 == 0 else 1.0
 		var lines := RoomGen.generate(rng, density)
-		if lines == Layouts.COMBAT[0]:
-			fallbacks += 1
 		var grid := RoomGen.to_grid(lines)
 		var room := Room.new(lines)
 		var ok := RoomGen.is_good(grid) and room.is_valid()
@@ -30,6 +27,7 @@ func _init() -> void:
 		seen["".join(lines)] = true
 		for row: String in lines:
 			walls_total += row.count("#")
+	var fallbacks := RoomGen.fallbacks
 	var ms := (Time.get_ticks_usec() - started) / 1000.0
 	var border := 2 * C.ROOM_W + 2 * (C.ROOM_H - 2)
 	print("rooms: %d  unique: %d  failures: %d  fallbacks: %d" % [count, seen.size(), failures, fallbacks])

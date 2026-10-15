@@ -38,6 +38,8 @@ const STAMPS := [
 ]
 const SYM_WEIGHTS := {Sym.MIRROR_X: 35, Sym.MIRROR_XY: 30, Sym.ROTATE: 20, Sym.NONE: 15}
 
+static var fallbacks := 0 # times generate() gave up; tests read this
+
 
 ## Returns a fresh layout in the same format as Layouts.COMBAT, or Layouts.COMBAT[0] if
 ## every attempt failed (has not happened in testing, but the game must never get stuck).
@@ -60,6 +62,7 @@ static func generate(rng: RandomNumberGenerator, density := 1.0) -> Array[String
 					walls += 1
 		if is_good(grid):
 			return _to_lines(grid)
+	fallbacks += 1
 	var fallback: Array[String] = []
 	fallback.assign(Layouts.COMBAT[0])
 	return fallback
