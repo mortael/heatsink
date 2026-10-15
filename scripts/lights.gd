@@ -4,11 +4,12 @@ extends Node2D
 ## Only big blasts cast shadows from the walls (one shadowed light at a time keeps phones and the
 ## web build fast). Turned off entirely by the "Lights & shadows" setting.
 ## A second small pool follows energy bolts in flight, so each bolt lights the floor and walls
-## it passes. Capped at BOLT_POOL: with more bolts than that, the newest ones carry the lights.
+## it passes, and walls and pillars throw shadows away from it. Capped at BOLT_POOL: with more
+## bolts than that, the newest ones carry the lights.
 
 const POOL := 8
 const BOLT_POOL := 4
-const BOLT_RADIUS := 2.2 * C.TILE
+const BOLT_RADIUS := 3.0 * C.TILE
 const BOLT_ENERGY := 2.0
 
 var _lights: Array[PointLight2D] = []
@@ -34,6 +35,10 @@ func _ready() -> void:
 		b.texture = Glow.light()
 		b.texture_scale = BOLT_RADIUS * 2.0 / Glow.TEX_SIZE
 		b.energy = BOLT_ENERGY
+		b.shadow_enabled = true
+		b.shadow_filter = Light2D.SHADOW_FILTER_PCF5
+		b.shadow_filter_smooth = 1.5
+		b.shadow_color = Color(0, 0, 0, 0.9)
 		b.enabled = false
 		add_child(b)
 		_bolt_lights.append(b)
@@ -65,6 +70,11 @@ func clear() -> void:
 		_state[i][0] = 0.0
 	for b in _bolt_lights:
 		b.enabled = false
+
+
+## The bolt lights switched on right now (the lighting screenshots check this).
+func bolt_lights_active() -> int:
+	return _bolt_lights.filter(func(l: PointLight2D) -> bool: return l.enabled).size()
 
 
 ## Called when the Lights & shadows setting changes.
@@ -106,15 +116,20 @@ func _process(delta: float) -> void:
 
 ## Puts the bolt lights on the newest bolts in flight; spare lights switch off.
 func _follow_bolts() -> void:
-	var bolts := get_tree().get_nodes_in_group("bolts") if Settings.lights else []
-	var n := bolts.size()
+	var bolts: Array = get_tree().get_nodes_in_group("bolts")
+	for bolt: Rivet in bolts:
+		bolt.lit = false
+	if not Settings.lights:
+		bolts = []
+	elif bolts.size() > BOLT_POOL:
+		bolts.sort_custom(func(a: Rivet, b: Rivet) -> bool: return a.spawn_id > b.spawn_id)
 	for i in BOLT_POOL:
 		var b := _bolt_lights[i]
-		var k := n - 1 - i # newest first: nodes join the group in the order they spawn
-		if k < 0:
+		if i >= bolts.size():
 			b.enabled = false
 			continue
-		var bolt: Rivet = bolts[k]
+		var bolt: Rivet = bolts[i]
+		bolt.lit = true
 		b.global_position = bolt.global_position
 		b.color = Rivet.color_for(bolt.overdrive or bolt.ricocheted)
 		b.enabled = true

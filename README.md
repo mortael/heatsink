@@ -112,7 +112,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 | `tests/menu_test.tscn` | Walks menu → settings → codex → run → pause → menu and fails if a step doesn't work |
 | `tests/ui_shots.tscn` | Screenshots of the Codex, the FPS counter and the Vent ring (needs a renderer, not headless) |
-| `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam and a Vent (needs a renderer, not headless) |
+| `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam, a Vent and bolt light and shadows by the pillars (needs a renderer, not headless) |
 
 Automated playtest (headless):
 
