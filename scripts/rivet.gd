@@ -23,6 +23,7 @@ var _exclude: Array[RID] = []
 func _ready() -> void:
 	z_index = 4
 	material = Glow.additive()
+	add_to_group("bolts") # Lights hangs a small light on each bolt in flight
 
 
 ## Normal bolts burn electric blue-white; Overdrive and ricochets burn gold.
@@ -110,6 +111,7 @@ func _draw() -> void:
 		PackedColorArray([Color(col, 0.35), Color(col, 0.0), Color(col, 0.35)]))
 	draw_polygon(PackedVector2Array([side * 2.4, tail * 0.7 + side * 0.4, tail * 0.7 - side * 0.4, -side * 2.4]),
 		PackedColorArray([Color(col, 1.0), Color(col, 0.0), Color(col, 0.0), Color(col, 1.0)]))
+	Glow.halo(self, Vector2.ZERO, 64.0, Color(col, 0.07)) # faint wash on the floor, even beyond the light cap
 	Glow.halo(self, Vector2.ZERO, (26.0 if hot else 20.0) * pulse, Color(col, 0.6))
 	Glow.halo(self, -dir * 4.0, 9.0, Color(1, 1, 1, 0.9))
 	# White-hot core, stretched along the flight line.

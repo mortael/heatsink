@@ -1,6 +1,6 @@
 extends Node
 ## Staged screenshots for the lighting: rivet tracers crossing a live Linesman beam, a full Vent
-## next to the pillars of the first room, then the open doors. Needs a real renderer, not --headless:
+## next to the pillars of the first room, the open doors, then bolts fired into the dark. Needs a real renderer, not --headless:
 ## xvfb-run godot --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
 
 var game: Node
@@ -76,6 +76,12 @@ func _physics_process(_delta: float) -> void:
 			game._open_doors()
 		300:
 			_shot("doors")
+			p.position = Vector2(20 * t, 10.5 * t)
+			p.bot_aim = Vector2(-1, -0.05)
+			p.heat.value = 70.0
+			p.bot_fire = true
+		330:
+			_shot("bolts_dark")
 			get_tree().quit(0)
 
 
