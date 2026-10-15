@@ -16,7 +16,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 ## Run it
 
-1. Install Godot 4.5.1 (standard build, not .NET).
+1. Install Godot 4.7.2 (standard build, not .NET).
 2. Open Godot, click **Import**, and pick `project.godot` in this folder.
 3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Settings** (volume, screen shake, fullscreen; saved between sessions) and **Quit** (not shown in the browser).
 

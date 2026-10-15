@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  GODOT_VERSION: 4.5.1
+  GODOT_VERSION: 4.7.2
 
 jobs:
   build:
@@ -85,7 +85,7 @@ jobs:
           # The runner image ships the Android SDK (platform-tools, build-tools) at $ANDROID_HOME.
           mkdir -p ~/.config/godot
           printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' \
-            "$ANDROID_HOME" "$JAVA_HOME" > ~/.config/godot/editor_settings-4.5.tres
+            "$ANDROID_HOME" "$JAVA_HOME" > ~/.config/godot/editor_settings-${GODOT_VERSION%.*}.tres
           # A rising version code lets each build install as an update.
           sed -i -e 's/^version\/code=.*/version\/code=${{ github.run_number }}/' \
             -e 's/^version\/name=.*/version\/name="0.1.${{ github.run_number }}"/' export_presets.cfg
