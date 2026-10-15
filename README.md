@@ -18,7 +18,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 1. Install Godot 4.7.2 (standard build, not .NET).
 2. Open Godot, click **Import**, and pick `project.godot` in this folder.
-3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Settings** (volume, screen shake, fullscreen, lights & shadows; saved between sessions) and **Quit** (not shown in the browser).
+3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Codex** (how to play: Heat, Vent, every item, the enemies and the room types), **Settings** (volume, screen shake, fullscreen, lights & shadows, an FPS counter; saved between sessions) and **Quit** (not shown in the browser). The Codex is also in the pause menu.
 
 ## Controls
 
@@ -38,7 +38,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 - Fire to build Heat. At 80+ you're **Hot**: rivets turn gold, pierce one enemy and ricochet off walls.
 - Keep firing to 100 and you **Overheat**: the gun locks for 2 s, you move slower, and every hit costs an extra pip.
-- **Vent** dumps all Heat as a nova that grows with Heat, and every rivet stuck in an enemy detonates.
+- **Vent** dumps all Heat as a nova that grows with Heat, and every rivet stuck in an enemy detonates. The ring around your Sink fills while the Vent cools down and glows orange (with a flash and a soft chime) when it's ready again.
 - **Dash** gives brief invulnerability and quenches 10 Heat, so you can use it to stay in the Hot band longer.
 - Clinkers glow orange and squash for 0.6 s before they lunge. Dash through or step out of the way.
 
@@ -106,10 +106,12 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/glow.gd`, `scripts/lights.gd`, `scripts/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
 | `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
 | `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
-| `scripts/settings.gd`, `scripts/ui_style.gd` | Saved settings (autoload) and the menu look |
+| `scripts/codex_panel.gd` | The Codex: how-to-play pages, with items and room types read from the game data |
+| `scripts/settings.gd`, `scripts/ui_style.gd`, `scripts/fps_counter.gd` | Saved settings (autoload), the menu look and the optional FPS counter |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
-| `tests/menu_test.tscn` | Walks menu → settings → run → pause → menu and fails if a step doesn't work |
+| `tests/menu_test.tscn` | Walks menu → settings → codex → run → pause → menu and fails if a step doesn't work |
+| `tests/ui_shots.tscn` | Screenshots of the Codex, the FPS counter and the Vent ring (needs a renderer, not headless) |
 | `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam and a Vent (needs a renderer, not headless) |
 
 Automated playtest (headless):

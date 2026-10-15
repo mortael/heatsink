@@ -1,5 +1,5 @@
 extends Node
-## Smoke test for the menus: title screen -> Settings -> Start -> run -> pause -> Main menu.
+## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> run -> pause -> Main menu.
 ## Run: godot --headless --path . res://tests/menu_test.tscn
 
 var step := 0
@@ -60,8 +60,23 @@ func _step() -> bool:
 			if not scene.buttons.visible:
 				_fail("Back did not return to the menu")
 				return true
-			scene.start_button.pressed.emit()
+			scene.codex_button.pressed.emit()
 		3:
+			if not scene.codex.visible or scene.buttons.visible:
+				_fail("Codex did not open")
+				return true
+			for i in CodexPanel.PAGES.size():
+				scene.codex.show_page(i)
+				if scene.codex.text.get_parsed_text().length() < 200:
+					_fail("Codex page %s is empty" % CodexPanel.PAGES[i])
+					return true
+			scene.codex.close()
+		4:
+			if not scene.buttons.visible or scene.get_viewport().gui_get_focus_owner() != scene.codex_button:
+				_fail("Back from the Codex did not return to the menu")
+				return true
+			scene.start_button.pressed.emit()
+		5:
 			if scene == null or scene.name != "Game":
 				_fail("Start did not begin a run")
 				return true
@@ -69,12 +84,12 @@ func _step() -> bool:
 			ev.action = "pause"
 			ev.pressed = true
 			Input.parse_input_event(ev)
-		4:
+		6:
 			if not scene.pause_menu.is_open or not paused:
 				_fail("Esc did not pause the run")
 				return true
 			scene.pause_menu.menu_button.pressed.emit()
-		5:
+		7:
 			if not scene is MainMenu or paused:
 				_fail("Main menu button did not return to an unpaused title screen")
 				return true

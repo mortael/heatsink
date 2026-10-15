@@ -1,6 +1,6 @@
 class_name PauseMenu
 extends CanvasLayer
-## Esc (or Start on a pad) mid-run: Resume, Settings, Main menu. Pauses the game while open.
+## Esc (or Start on a pad) mid-run: Resume, Codex, Settings, Main menu. Pauses the game while open.
 
 const MENU_SCENE := "res://menu.tscn"
 
@@ -9,9 +9,11 @@ var is_open := false
 var root := Control.new()
 var buttons: VBoxContainer
 var resume_button: Button
+var codex_button: Button
 var settings_button: Button
 var menu_button: Button
 var settings: SettingsPanel
+var codex: CodexPanel
 
 
 func _ready() -> void:
@@ -40,6 +42,11 @@ func _ready() -> void:
 	resume_button = UiStyle.button("RESUME")
 	resume_button.pressed.connect(close)
 	buttons.add_child(resume_button)
+	codex_button = UiStyle.button("CODEX")
+	codex_button.pressed.connect(func() -> void:
+		buttons.visible = false
+		codex.open())
+	buttons.add_child(codex_button)
 	settings_button = UiStyle.button("SETTINGS")
 	settings_button.pressed.connect(func() -> void:
 		buttons.visible = false
@@ -60,6 +67,12 @@ func _ready() -> void:
 		buttons.visible = true
 		settings_button.grab_focus())
 	center.add_child(settings)
+	codex = CodexPanel.new()
+	codex.visible = false
+	codex.back.connect(func() -> void:
+		buttons.visible = true
+		codex_button.grab_focus())
+	center.add_child(codex)
 
 
 func open() -> void:
@@ -69,6 +82,7 @@ func open() -> void:
 	root.visible = true
 	buttons.visible = true
 	settings.visible = false
+	codex.visible = false
 	get_tree().paused = true
 	Sfx.play("band", 3.0, -6.0)
 	resume_button.grab_focus()
@@ -79,6 +93,7 @@ func close() -> void:
 		return
 	if settings.visible:
 		settings.close()
+	codex.visible = false
 	is_open = false
 	root.visible = false
 	get_tree().paused = false
@@ -93,13 +108,15 @@ func to_menu() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("pause"):
-		if is_open and not settings.visible and event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
+		if is_open and not settings.visible and not codex.visible and event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
 			get_viewport().set_input_as_handled()
 			close()
 		return
 	if is_open:
 		if settings.visible:
 			settings.close()
+		elif codex.visible:
+			codex.close()
 		else:
 			close()
 		get_viewport().set_input_as_handled()
