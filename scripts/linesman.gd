@@ -3,6 +3,8 @@ extends Enemy
 ## Pattern-disrupter (GDD section 7, profile 2). Harmless alone: it tethers another enemy with a beam.
 ## Tether: 0.7 s dotted violet line to the nearest other enemy within 8 tiles and in sight, then a solid cyan beam
 ## for 3 s that costs 1 pip on contact. Recast every 5 s. The beam drops the moment either end dies.
+## The live beam is drawn like a lightsaber: it ignites from the Linesman outward in IGNITE s, hums,
+## and lights the floor around it. Only the part that has ignited can hit.
 ## Snap Back: when the player comes within 3 tiles, a 0.4 s crouch with a rising chirp, then a 4-tile hop.
 
 enum S { DRIFT, CROUCH, HOP }
@@ -21,6 +23,7 @@ const HOP_DIST := 4.0 * C.TILE
 const HOP_TIME := 0.25
 const HOP_COOLDOWN := 1.5
 const BEAM_SOURCE := "Linesman · Tether beam"
+const IGNITE := 0.1
 
 var state: int = S.DRIFT
 var t := 0.0
@@ -33,6 +36,24 @@ var hop_cd := 0.0
 var spot := Vector2.ZERO
 var spot_t := 0.0
 var bob := randf() * TAU
+var _beam_fx: Node2D # additive layer under the body
+var _beam_light: PointLight2D
+
+
+func _ready() -> void:
+	super._ready()
+	_beam_fx = Node2D.new()
+	_beam_fx.material = Glow.additive()
+	_beam_fx.show_behind_parent = true
+	_beam_fx.draw.connect(_draw_beam)
+	add_child(_beam_fx)
+	_beam_light = PointLight2D.new()
+	_beam_light.texture = Glow.light()
+	_beam_light.color = C.TELE_LINE
+	_beam_light.blend_mode = Light2D.BLEND_MODE_ADD
+	_beam_light.enabled = false
+	add_child(_beam_light)
+	add_to_group("dynamic_lights")
 
 
 func _init() -> void:
@@ -46,6 +67,8 @@ func _ai(delta: float) -> void:
 	bob += delta * 3.0
 	hop_cd -= delta
 	_tick_tether(delta)
+	_update_beam_light()
+	_beam_fx.queue_redraw()
 	var p: Player = game.player
 	var to_p := p.global_position - global_position
 	match state:
@@ -148,7 +171,8 @@ func _tick_tether(delta: float) -> void:
 		T.BEAM:
 			tether_t -= delta
 			var p: Player = game.player
-			var c := Geometry2D.get_closest_point_to_segment(p.global_position, global_position, partner.global_position)
+			var tip := global_position.lerp(partner.global_position, beam_extent())
+			var c := Geometry2D.get_closest_point_to_segment(p.global_position, global_position, tip)
 			if not beam_hit and c.distance_to(p.global_position) < Player.RADIUS + 3.0 and not game.dead and not p.is_invulnerable():
 				beam_hit = true # 1 pip per beam; dash i-frames pass straight through
 				p.take_hit(1, BEAM_SOURCE)
@@ -178,6 +202,11 @@ func _find_partner() -> Enemy:
 	return best
 
 
+## 0..1: how far the beam has ignited from the Linesman toward its partner.
+func beam_extent() -> float:
+	return clampf((TETHER_BEAM - tether_t) / IGNITE, 0.0, 1.0) if tether == T.BEAM else 0.0
+
+
 ## True while the beam is live: the bot and the Forgewarden read this.
 func beam_active() -> bool:
 	return tether == T.BEAM and partner != null and is_instance_valid(partner)
@@ -185,7 +214,51 @@ func beam_active() -> bool:
 
 func _die() -> void:
 	_drop_tether()
+	_beam_light.enabled = false
+	_beam_fx.queue_redraw()
 	super._die()
+
+
+## The floor along the beam glows cyan: one light, stretched along the beam, no shadows.
+func _update_beam_light() -> void:
+	var on := Settings.lights and beam_active()
+	_beam_light.enabled = on
+	if not on:
+		return
+	var to := (partner.global_position - global_position) * beam_extent()
+	_beam_light.position = to * 0.5
+	_beam_light.rotation = to.angle()
+	_beam_light.scale = Vector2(maxf(to.length() + 80.0, 1.0) / Glow.TEX_SIZE, 160.0 / Glow.TEX_SIZE)
+	_beam_light.energy = 2.4 * _hum()
+
+
+## Called when the Lights & shadows setting changes.
+func apply_lights() -> void:
+	_update_beam_light()
+
+
+## Lightsaber hum: a fast shimmer with a little noise.
+func _hum() -> float:
+	return 0.88 + 0.08 * sin(Time.get_ticks_msec() / 22.0) + randf() * 0.06
+
+
+func _draw_beam() -> void:
+	if tether == T.IDLE or partner == null or not is_instance_valid(partner):
+		return
+	var to := partner.global_position - global_position
+	if tether == T.AIM:
+		# A faint violet charge-up along the dotted telegraph line.
+		var k := 1.0 - tether_t / TETHER_AIM
+		Glow.strip(_beam_fx, Vector2.ZERO, to, 10.0 + 8.0 * k, Color(C.TELE_STATE, 0.12 + 0.2 * k))
+		return
+	var tip := to * beam_extent()
+	var hum := _hum()
+	Glow.strip(_beam_fx, Vector2.ZERO, tip, 64.0 * hum, Color(C.TELE_LINE, 0.35))
+	Glow.strip(_beam_fx, Vector2.ZERO, tip, 22.0 * hum, Color(C.TELE_LINE, 0.95))
+	Glow.strip(_beam_fx, Vector2.ZERO, tip, 8.0, Color(0.8, 1, 1, 1))
+	_beam_fx.draw_line(Vector2.ZERO, tip, Color(1, 1, 1, 0.9), 2.5)
+	Glow.halo(_beam_fx, Vector2.ZERO, 30.0 * hum, Color(C.TELE_LINE, 0.8))
+	Glow.halo(_beam_fx, tip, 30.0 * hum, Color(C.TELE_LINE, 0.8))
 
 
 func _draw() -> void:
@@ -197,11 +270,7 @@ func _draw() -> void:
 			for i in segs:
 				if i % 2 == 0:
 					draw_line(to * (float(i) / segs), to * (float(i + 1) / segs), Color(C.TELE_STATE, 0.85), 2.0)
-		else:
-			var flick := 0.75 + 0.25 * sin(Time.get_ticks_msec() / 30.0)
-			draw_line(Vector2.ZERO, to, Color(C.TELE_LINE, 0.25 * flick), 12.0)
-			draw_line(Vector2.ZERO, to, Color(C.TELE_LINE, flick), 4.0)
-			draw_line(Vector2.ZERO, to, Color(0.9, 1, 1, flick), 1.5)
+		# The live beam is drawn by _draw_beam on the additive layer.
 	var squash := 1.0
 	var lift := sin(bob) * 2.0
 	if state == S.CROUCH:

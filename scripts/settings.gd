@@ -1,11 +1,12 @@
 extends Node
-## Player settings (volume, screen shake, fullscreen), saved to user://settings.cfg and applied at startup.
+## Player settings (volume, screen shake, fullscreen, lights), saved to user://settings.cfg and applied at startup.
 
 const PATH := "user://settings.cfg"
 
 var volume := 0.8 # master volume, 0..1
 var shake := 1.0 # screen shake strength, 0..1
 var fullscreen := false
+var lights := true # dynamic 2D lights and wall shadows; glow drawing stays on either way
 var dirty := false # changed since the last save; saved on quit if the panel was never closed
 
 
@@ -17,6 +18,9 @@ func _ready() -> void:
 		volume = clampf(cfg.get_value("audio", "volume", volume), 0.0, 1.0)
 		shake = clampf(cfg.get_value("video", "shake", shake), 0.0, 1.0)
 		fullscreen = cfg.get_value("video", "fullscreen", fullscreen)
+		var l: Variant = cfg.get_value("video", "lights", lights)
+		if l is bool:
+			lights = l
 	elif err != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d), using defaults" % [PATH, err])
 	# A browser only allows fullscreen from a click, so the web build never restores it at startup.
@@ -49,6 +53,7 @@ func save() -> void:
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("video", "shake", shake)
 	cfg.set_value("video", "fullscreen", fullscreen)
+	cfg.set_value("video", "lights", lights)
 	var err := cfg.save(PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [PATH, err])

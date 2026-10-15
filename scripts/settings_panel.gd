@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends PanelContainer
-## Volume, screen shake and fullscreen. Used by the main menu and the pause menu.
+## Volume, screen shake, fullscreen and lights. Used by the main menu and the pause menu.
 ## Changes apply at once and are saved when you leave the panel.
 
 signal back
@@ -8,6 +8,7 @@ signal back
 var volume: HSlider
 var shake: HSlider
 var fullscreen: CheckButton
+var lights: CheckButton
 var back_button: Button
 
 
@@ -44,6 +45,19 @@ func _init() -> void:
 		Settings.dirty = true
 		Settings.apply())
 	col.add_child(fullscreen)
+	lights = CheckButton.new()
+	lights.text = "Lights & shadows"
+	lights.tooltip_text = "Flashes of light from Vents and beams, with shadows behind walls. Turn off on slow devices."
+	lights.button_pressed = Settings.lights
+	lights.focus_mode = Control.FOCUS_ALL
+	lights.custom_minimum_size = Vector2(0, 44)
+	lights.add_theme_font_size_override("font_size", 20)
+	lights.toggled.connect(func(on: bool) -> void:
+		Settings.lights = on
+		Settings.dirty = true
+		# Apply at once: the game may be paused behind this panel, so nothing would update by itself.
+		get_tree().call_group("dynamic_lights", "apply_lights"))
+	col.add_child(lights)
 	back_button = UiStyle.button("BACK", 0)
 	back_button.pressed.connect(close)
 	col.add_child(back_button)
@@ -78,6 +92,7 @@ func open() -> void:
 	if Settings.can_fullscreen():
 		Settings.fullscreen = Settings.is_fullscreen()
 	fullscreen.set_pressed_no_signal(Settings.fullscreen)
+	lights.set_pressed_no_signal(Settings.lights)
 	visible = true
 	volume.grab_focus()
 
