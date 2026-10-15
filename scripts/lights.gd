@@ -51,9 +51,10 @@ func clear() -> void:
 		_state[i][0] = 0.0
 
 
-## Called when the setting is switched off.
-func lights_off() -> void:
-	clear()
+## Called when the Lights & shadows setting changes.
+func apply_lights() -> void:
+	if not Settings.lights:
+		clear()
 
 
 func active_count() -> int:

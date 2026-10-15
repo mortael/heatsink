@@ -232,9 +232,9 @@ func _update_beam_light() -> void:
 	_beam_light.energy = 2.4 * _hum()
 
 
-## Called when the setting is switched off.
-func lights_off() -> void:
-	_beam_light.enabled = false
+## Called when the Lights & shadows setting changes.
+func apply_lights() -> void:
+	_update_beam_light()
 
 
 ## Lightsaber hum: a fast shimmer with a little noise.

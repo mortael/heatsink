@@ -115,6 +115,26 @@ func vent_embers(pos: Vector2, radius: float, amount: float) -> void:
 		_add(pos + dir * 10.0, dir * radius * randf_range(2.0, 3.2), randf_range(0.25, 0.45), "teardrop", Color(1, randf_range(0.45, 0.8), 0.2), randf_range(3.0, 5.0), 0.004)
 
 
+## Muzzle flash: a short white-hot puff at the barrel.
+func muzzle(pos: Vector2, color: Color) -> void:
+	blasts.append([pos, 22.0, color, 0.07, 0.07])
+
+
+## An energy bolt lands: a small flash, a spark ring and a short light on the floor and walls.
+func impact(pos: Vector2, normal: Vector2, color: Color) -> void:
+	blasts.append([pos, 26.0, color, 0.14, 0.14])
+	ring(pos, 14.0, Color(color, 0.9), 0.12)
+	for i in 4:
+		var v := normal.rotated(randf_range(-1.2, 1.2)) * randf_range(140.0, 300.0)
+		_add(pos, v, randf_range(0.1, 0.2), "spark", color.lerp(Color.WHITE, 0.4), 2.0, 0.005)
+	lights.flash(pos, color, 1.6 * C.TILE, 1.2, 0.14)
+
+
+## Fizz along an energy bolt's path: tiny glowing motes that fade almost at once.
+func mote(pos: Vector2, color: Color) -> void:
+	_add(pos + Vector2(randf_range(-3, 3), randf_range(-3, 3)), Vector2(randf_range(-20, 20), randf_range(-20, 20)), randf_range(0.1, 0.2), "circle", Color(color, 0.8), randf_range(1.2, 2.2), 0.05)
+
+
 ## A Vent or a slam: a white-hot core that swells and cools to `color`, plus a room-filling
 ## light flash whose shadows fall away from the walls.
 func explosion(pos: Vector2, radius: float, color: Color, power := 1.0) -> void:

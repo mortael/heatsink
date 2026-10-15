@@ -46,6 +46,7 @@ static func additive() -> CanvasItemMaterial:
 	if _add == null:
 		_add = CanvasItemMaterial.new()
 		_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_add.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED # glow is a light source: the room's dimming never dulls it
 	return _add
 
 

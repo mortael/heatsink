@@ -103,7 +103,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/door.gd` | Doors that preview the next room |
 | `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
-| `scripts/glow.gd`, `scripts/lights.gd` | Additive glow textures, and the pool of 2D light flashes that throw wall shadows |
+| `scripts/glow.gd`, `scripts/lights.gd`, `scripts/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
 | `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
 | `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
 | `scripts/settings.gd`, `scripts/ui_style.gd` | Saved settings (autoload) and the menu look |

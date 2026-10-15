@@ -41,6 +41,7 @@ var invuln := 0.0
 var muzzle := 0.0
 var shots_fired := 0
 var vents := 0
+var lamp: PointLight2D # the Sink's own light: walls cast moving shadows around you
 
 # Bot hooks used by the automated playtest.
 var bot := false
@@ -64,6 +65,25 @@ func _ready() -> void:
 	heat.band_changed.connect(_on_band_changed)
 	heat.overheated.connect(_on_overheated)
 	z_index = 3
+	lamp = PointLight2D.new()
+	lamp.texture = Glow.light()
+	lamp.texture_scale = 5.0 * C.TILE * 2.0 / Glow.TEX_SIZE
+	lamp.shadow_enabled = true
+	lamp.shadow_filter = Light2D.SHADOW_FILTER_PCF5
+	lamp.shadow_filter_smooth = 3.0
+	lamp.shadow_color = Color(0, 0, 0, 0.75)
+	add_child(lamp)
+	# The Sink always reads at full brightness: it carries the lamp, so it shouldn't be lit by it.
+	var mat := CanvasItemMaterial.new()
+	mat.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	material = mat
+	add_to_group("dynamic_lights")
+	apply_lights()
+
+
+## Called when the Lights & shadows setting changes.
+func apply_lights() -> void:
+	lamp.enabled = Settings.lights
 
 
 func is_invulnerable() -> bool:
@@ -108,7 +128,24 @@ func _physics_process(delta: float) -> void:
 		_fire()
 	if _vent_pressed() and vent_cd <= 0.0:
 		_vent()
+	_update_lamp()
 	queue_redraw()
+
+
+## The lamp warms with Heat, brightens in Overdrive and flickers red while overheated.
+func _update_lamp() -> void:
+	if not lamp.enabled:
+		return
+	var k := clampf(heat.value / maxf(heat.hot_at, 1.0), 0.0, 1.0)
+	var col := Color(0.75, 0.82, 0.95).lerp(Color(1.0, 0.72, 0.4), k)
+	var energy := 1.3 + 0.5 * k
+	if heat.is_overheated():
+		col = C.HEAT_OVER
+		energy = 0.9 + 0.8 * randf()
+	elif heat.band == Heat.Band.HOT:
+		energy = 2.0
+	lamp.color = col
+	lamp.energy = energy + (0.5 if muzzle > 0.0 else 0.0)
 
 
 func _move_input() -> Vector2:
@@ -188,6 +225,7 @@ func _fire() -> void:
 		extra.speed_mult = r.speed_mult
 		game.world.add_child(extra)
 	heat.add(HEAT_PER_SHOT)
+	game.fx.muzzle(r.position, Rivet.color_for(hot))
 	muzzle = 0.05
 	shots_fired += 1
 	Sfx.play("shot", 3.0 if hot else 0.0, -6.0)

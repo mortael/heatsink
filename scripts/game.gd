@@ -61,6 +61,7 @@ func _ready() -> void:
 	inventory.absolved.connect(_on_absolved)
 	world = Node2D.new()
 	add_child(world)
+	add_child(Ambience.new())
 	fx = Fx.new()
 	fx.z_index = 6
 	world.add_child(fx)

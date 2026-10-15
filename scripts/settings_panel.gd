@@ -55,9 +55,8 @@ func _init() -> void:
 	lights.toggled.connect(func(on: bool) -> void:
 		Settings.lights = on
 		Settings.dirty = true
-		if not on:
-			# Switch off lights that are mid-flash too; the game may be paused, so they won't fade by themselves.
-			get_tree().call_group("dynamic_lights", "lights_off"))
+		# Apply at once: the game may be paused behind this panel, so nothing would update by itself.
+		get_tree().call_group("dynamic_lights", "apply_lights"))
 	col.add_child(lights)
 	back_button = UiStyle.button("BACK", 0)
 	back_button.pressed.connect(close)

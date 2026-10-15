@@ -37,6 +37,10 @@ func _ready() -> void:
 				x += 1
 			_solid(Rect2(start * t, y * t, (x - start) * t, t))
 	z_index = 0
+	var glow := Node2D.new()
+	glow.material = Glow.additive()
+	glow.draw.connect(_draw_glow.bind(glow))
+	add_child(glow)
 
 
 ## True when the entry and every door slot are connected by open floor.
@@ -157,6 +161,19 @@ func _solid(r: Rect2) -> void:
 	poly.polygon = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
 	occ.occluder = poly
 	add_child(occ)
+
+
+## The hot seams along the walls glow softly onto the floor.
+func _draw_glow(glow: Node2D) -> void:
+	var a := Color(accent, 0.35)
+	for r in rects:
+		if r.end.y >= size_px.y:
+			continue # the bottom wall's seam faces out of the room
+		Glow.strip(glow, Vector2(r.position.x, r.end.y), r.end, 16.0, a)
+	var inner := Rect2(Vector2(C.TILE, C.TILE), size_px - Vector2(C.TILE, C.TILE) * 2.0)
+	for side in [[inner.position, Vector2(inner.end.x, inner.position.y)], [inner.position, Vector2(inner.position.x, inner.end.y)],
+			[Vector2(inner.end.x, inner.position.y), inner.end], [Vector2(inner.position.x, inner.end.y), inner.end]]:
+		Glow.strip(glow, side[0], side[1], 10.0, Color(accent, 0.12))
 
 
 func _draw() -> void:
