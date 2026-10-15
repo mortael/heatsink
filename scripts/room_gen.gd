@@ -63,6 +63,7 @@ static func generate(rng: RandomNumberGenerator, density := 1.0) -> Array[String
 		if is_good(grid):
 			return _to_lines(grid)
 	fallbacks += 1
+	push_warning("RoomGen: no valid room in %d attempts, using the Pillars template" % ATTEMPTS)
 	var fallback: Array[String] = []
 	fallback.assign(Layouts.COMBAT[0])
 	return fallback

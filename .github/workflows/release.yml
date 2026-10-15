@@ -15,8 +15,14 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # This job runs the project's own scripts (import, tests, export), so it gets a
+    # read-only token and the checkout doesn't keep it on disk.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Cache Godot and export templates
         id: cache-godot
