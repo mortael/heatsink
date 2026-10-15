@@ -151,6 +151,12 @@ func _solid(r: Rect2) -> void:
 	cs.position = r.get_center()
 	b.add_child(cs)
 	add_child(b)
+	# Walls block light, so Vents and slams throw shadows behind them.
+	var occ := LightOccluder2D.new()
+	var poly := OccluderPolygon2D.new()
+	poly.polygon = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+	occ.occluder = poly
+	add_child(occ)
 
 
 func _draw() -> void:

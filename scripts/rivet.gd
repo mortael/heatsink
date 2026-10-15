@@ -1,6 +1,7 @@
 class_name Rivet
 extends Node2D
 ## Rivet Gun projectile. Embeds in enemies; in Overdrive it pierces 1 and ricochets once.
+## Drawn additively: a hot white head, a small halo and a tracer that fades out behind it.
 
 const SPEED := 14.0 * C.TILE
 const DAMAGE := 8.0
@@ -13,11 +14,13 @@ var ricochet := 0
 var life := 1.4
 var speed_mult := 1.0
 var ricocheted := false
+var _travel := 0.0 # px since leaving the gun or the last bounce; the tracer never reaches further back
 var _exclude: Array[RID] = []
 
 
 func _ready() -> void:
 	z_index = 4
+	material = Glow.additive()
 
 
 func _physics_process(delta: float) -> void:
@@ -26,6 +29,7 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	var remaining := SPEED * speed_mult * delta
+	_travel += remaining
 	var space := get_world_2d().direct_space_state
 	var guard := 0
 	while remaining > 0.0 and guard < 4:
@@ -52,6 +56,7 @@ func _physics_process(delta: float) -> void:
 		if ricochet > 0:
 			ricochet -= 1
 			dir = dir.bounce(normal)
+			_travel = 0.0
 			global_position += normal * 2.0
 			if not ricocheted and game.inventory.has("rebound_charge"):
 				pierce += 2 if game.inventory.is_tempered("rebound_charge") else 1
@@ -78,8 +83,13 @@ func _hit_enemy(e: Enemy) -> void:
 
 
 func _draw() -> void:
-	var col := C.RIVET_GOLD if overdrive or ricocheted else Color(0.85, 0.88, 0.92)
-	var back := -dir * (22.0 if overdrive else 14.0)
-	draw_line(back, Vector2.ZERO, Color(col, 0.35), 5.0)
-	draw_line(back * 0.5, Vector2.ZERO, col, 3.0)
+	var hot := overdrive or ricocheted
+	var col := C.RIVET_GOLD if hot else Color(0.75, 0.85, 1.0)
+	var length := minf(_travel, 70.0 if hot else 46.0)
+	var side := dir.orthogonal() * (3.0 if hot else 2.2)
+	var tail := -dir * length
+	# Tracer: a tapered streak, bright at the head and gone at the tail.
+	draw_polygon(PackedVector2Array([side, tail + side * 0.2, tail - side * 0.2, -side]),
+		PackedColorArray([Color(col, 0.85), Color(col, 0.0), Color(col, 0.0), Color(col, 0.85)]))
+	Glow.halo(self, Vector2.ZERO, 16.0 if hot else 12.0, Color(col, 0.55))
 	draw_circle(Vector2.ZERO, 2.5, Color.WHITE)

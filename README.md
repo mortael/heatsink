@@ -18,7 +18,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 1. Install Godot 4.7.2 (standard build, not .NET).
 2. Open Godot, click **Import**, and pick `project.godot` in this folder.
-3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Settings** (volume, screen shake, fullscreen; saved between sessions) and **Quit** (not shown in the browser).
+3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Settings** (volume, screen shake, fullscreen, lights & shadows; saved between sessions) and **Quit** (not shown in the browser).
 
 ## Controls
 
@@ -103,12 +103,14 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/door.gd` | Doors that preview the next room |
 | `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
+| `scripts/glow.gd`, `scripts/lights.gd` | Additive glow textures, and the pool of 2D light flashes that throw wall shadows |
 | `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
 | `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
 | `scripts/settings.gd`, `scripts/ui_style.gd` | Saved settings (autoload) and the menu look |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 | `tests/menu_test.tscn` | Walks menu → settings → run → pause → menu and fails if a step doesn't work |
+| `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam and a Vent (needs a renderer, not headless) |
 
 Automated playtest (headless):
 

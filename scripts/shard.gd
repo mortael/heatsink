@@ -24,6 +24,7 @@ var _trail: Array[Vector2] = []
 
 func _ready() -> void:
 	z_index = 4
+	material = Glow.additive() # hot metal: everything a shard draws glows
 	if flare:
 		add_to_group("flares")
 
@@ -112,6 +113,7 @@ func _nearest_ignited() -> Enemy:
 func _draw() -> void:
 	if flare:
 		var pulse := 0.75 + 0.25 * sin(age * 30.0)
+		Glow.halo(self, Vector2.ZERO, 26.0 * pulse, Color(1, 0.5, 0.1, 0.7))
 		draw_circle(Vector2.ZERO, 9.0 * pulse, Color(1, 0.5, 0.1, 0.25))
 		draw_circle(Vector2.ZERO, 4.0, Color(1, 0.95, 0.75))
 		return
@@ -119,6 +121,7 @@ func _draw() -> void:
 		for i in _trail.size():
 			var k := 1.0 - float(i) / _trail.size()
 			draw_circle(to_local(_trail[i]), 3.5 * k, Color(1, 0.55, 0.15, 0.6 * k))
+		Glow.halo(self, Vector2.ZERO, 14.0, Color(1, 0.55, 0.15, 0.6))
 		draw_circle(Vector2.ZERO, 4.0, Color(1, 0.8, 0.4))
 		return
 	var r := dir.angle()
@@ -127,4 +130,5 @@ func _draw() -> void:
 		Vector2.from_angle(r + 2.5) * 4.0,
 		Vector2.from_angle(r - 2.5) * 4.0,
 	])
+	Glow.halo(self, Vector2.ZERO, 10.0, Color(1, 0.7, 0.4, 0.35))
 	draw_colored_polygon(pts, Color(0.85, 0.88, 0.94))

@@ -2,6 +2,7 @@ class_name Fx
 extends Node2D
 ## Lightweight particle, ring, portal and damage-number renderer.
 ## Particle silhouettes follow GDD section 8: shrapnel = triangles, molten/slag = round blobs, sparks = streaks.
+## A child layer draws additive glow on top (halos, blast flashes), and `lights` flashes real 2D lights.
 
 const MAX_PARTS := 500
 
@@ -10,6 +11,18 @@ var rings: Array = [] # [pos, radius, color, life, max_life]
 var texts: Array = [] # [pos, text, color, size, life, max_life]
 var portals: Array = [] # [pos, life, max_life]
 var arcs: Array = [] # [from, to, life, max_life]
+var blasts: Array = [] # [pos, radius, color, life, max_life]
+var glow: Node2D
+var lights: Lights
+
+
+func _ready() -> void:
+	glow = Node2D.new()
+	glow.material = Glow.additive()
+	glow.draw.connect(_draw_glow)
+	add_child(glow)
+	lights = Lights.new()
+	add_child(lights)
 
 
 func _process(delta: float) -> void:
@@ -41,7 +54,12 @@ func _process(delta: float) -> void:
 		portals[i][1] -= delta
 		if portals[i][1] <= 0.0:
 			portals.remove_at(i)
+	for i in range(blasts.size() - 1, -1, -1):
+		blasts[i][3] -= delta
+		if blasts[i][3] <= 0.0:
+			blasts.remove_at(i)
 	queue_redraw()
+	glow.queue_redraw()
 
 
 func clear() -> void:
@@ -50,6 +68,9 @@ func clear() -> void:
 	texts.clear()
 	portals.clear()
 	arcs.clear()
+	blasts.clear()
+	if lights != null:
+		lights.clear()
 
 
 func _add(pos: Vector2, vel: Vector2, life: float, shape: String, color: Color, size: float, drag := 0.02) -> void:
@@ -76,6 +97,8 @@ func pop(pos: Vector2, color: Color) -> void:
 		var v := Vector2.from_angle(randf() * TAU) * randf_range(150.0, 300.0)
 		_add(pos, v, 0.3, "spark", Color(1, 0.7, 0.3), 2.0, 0.005)
 	ring(pos, 22.0, Color(1, 0.6, 0.25, 0.8), 0.15)
+	blasts.append([pos, 40.0, Color(1, 0.55, 0.2), 0.18, 0.18])
+	lights.flash(pos, Color(1, 0.55, 0.25), 2.5 * C.TILE, 1.4, 0.25)
 
 
 func rivet_burst(pos: Vector2, count: int) -> void:
@@ -90,6 +113,13 @@ func vent_embers(pos: Vector2, radius: float, amount: float) -> void:
 	for i in n:
 		var dir := Vector2.from_angle(randf() * TAU)
 		_add(pos + dir * 10.0, dir * radius * randf_range(2.0, 3.2), randf_range(0.25, 0.45), "teardrop", Color(1, randf_range(0.45, 0.8), 0.2), randf_range(3.0, 5.0), 0.004)
+
+
+## A Vent or a slam: a white-hot core that swells and cools to `color`, plus a room-filling
+## light flash whose shadows fall away from the walls.
+func explosion(pos: Vector2, radius: float, color: Color, power := 1.0) -> void:
+	blasts.append([pos, radius, color, 0.45, 0.45])
+	lights.flash(pos, color, radius * 2.2, 1.4 + 1.8 * power, 0.55, true)
 
 
 func ring(pos: Vector2, radius: float, color: Color, life: float) -> void:
@@ -125,6 +155,35 @@ func debris(pos: Vector2, dir: Vector2) -> void:
 
 func portal(pos: Vector2, time: float) -> void:
 	portals.append([pos, time, time])
+
+
+func _draw_glow() -> void:
+	for b in blasts:
+		var k: float = 1.0 - b[3] / b[4] # 0 -> 1 over the blast
+		var rad: float = b[1]
+		var c: Color = b[2]
+		var fade := (1.0 - k) * (1.0 - k)
+		# Outer fireball swells fast, the white core shrinks as it cools.
+		Glow.halo(glow, b[0], rad * (0.6 + 0.9 * sqrt(k)), Color(c, 0.9 * fade))
+		Glow.halo(glow, b[0], rad * 0.55 * (1.0 - 0.6 * k), Color(Color.WHITE.lerp(c, k), fade))
+	for r in rings:
+		var k: float = 1.0 - r[3] / r[4]
+		var rad: float = r[1] * (0.25 + 0.75 * sqrt(k))
+		var c: Color = r[2]
+		glow.draw_arc(r[0], rad, 0, TAU, 48, Color(c, 0.22 * c.a * (1.0 - k)), 22.0 * (1.0 - k) + 4.0)
+	for pt in portals:
+		var k: float = 1.0 - pt[1] / pt[2]
+		Glow.halo(glow, pt[0], 34.0, Color(1, 0.45, 0.15, 0.25 + 0.35 * k))
+	for a in arcs:
+		var k: float = a[2] / a[3]
+		Glow.strip(glow, a[0], a[1], 26.0, Color(0.4, 0.85, 1.0, 0.45 * k))
+	for p in parts:
+		var shape: String = p[4]
+		if shape == "tri":
+			continue # cold steel shrapnel does not glow
+		var k: float = p[2] / p[3]
+		var c: Color = p[5]
+		Glow.halo(glow, p[0], p[6] * (3.5 if shape == "spark" else 2.5), Color(c, c.a * k * 0.5))
 
 
 func _draw() -> void:

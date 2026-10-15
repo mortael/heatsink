@@ -253,6 +253,8 @@ func _vent() -> void:
 	if amount >= 80.0:
 		col = C.HEAT_HOT
 	game.fx.ring(global_position, radius, col, 0.32)
+	# The blast burns orange even when the ring reads cold; a hot Vent burns yellow-white.
+	game.fx.explosion(global_position, radius, Color(1, 0.5, 0.18).lerp(Color(1, 0.8, 0.5), clampf((amount - 40.0) / 60.0, 0.0, 1.0)), amount / 100.0)
 	game.fx.vent_embers(global_position, radius, amount)
 	Juice.hitstop(6 if amount >= 80.0 else 3)
 	Juice.add_trauma(0.2 + 0.25 * amount / 100.0)

@@ -169,6 +169,7 @@ func _slam() -> void:
 	Juice.add_trauma(0.45)
 	Sfx.play("slam", 0.0, 0.0)
 	game.fx.ring(global_position, SLAM_RADIUS, C.TELE_GROUND, 0.25)
+	game.fx.explosion(global_position, SLAM_RADIUS, Color(1, 0.35, 0.15), 0.5)
 	game.fx.sparks(global_position, Vector2.UP, 14, Color(1, 0.5, 0.2))
 
 
@@ -241,6 +242,7 @@ func _die() -> void:
 	remove_from_group("enemies")
 	game.fx.pop(global_position, Color(0.9, 0.45, 0.2))
 	game.fx.ring(global_position, 3.0 * C.TILE, Color(1, 0.6, 0.25), 0.5)
+	game.fx.explosion(global_position, 3.0 * C.TILE, Color(1, 0.6, 0.25), 0.8)
 	Sfx.play("slam", -3.0, 0.0)
 	Sfx.play_ramp("kill", 0.0)
 	Juice.hitstop(10, true)
