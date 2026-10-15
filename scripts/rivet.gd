@@ -18,12 +18,18 @@ var ricocheted := false
 var _age := randf() * 10.0
 var _travel := 0.0 # px since leaving the gun or the last bounce; the tracer never reaches further back
 var _exclude: Array[RID] = []
+var spawn_id := 0 # rising count, so Lights can find the newest bolts
+var lit := false # set by Lights while a real light follows this bolt
+
+static var _spawned := 0
 
 
 func _ready() -> void:
 	z_index = 4
 	material = Glow.additive()
-	add_to_group("bolts") # Lights hangs a small light on each bolt in flight
+	_spawned += 1
+	spawn_id = _spawned
+	add_to_group("bolts") # Lights hangs a small light on the newest bolts in flight
 
 
 ## Normal bolts burn electric blue-white; Overdrive and ricochets burn gold.
@@ -49,14 +55,14 @@ func _physics_process(delta: float) -> void:
 		if hit.is_empty():
 			global_position = to
 			if randf() < 0.5:
-				game.fx.mote(global_position - dir * randf_range(8.0, 30.0), _color())
+				game.fx.mote(global_position - dir * randf_range(8.0, 30.0), light_color())
 			break
 		var hit_pos: Vector2 = hit.position
 		remaining -= global_position.distance_to(hit_pos)
 		global_position = hit_pos
 		var col: Object = hit.collider
 		if col is Enemy:
-			game.fx.impact(hit_pos, -dir, _color())
+			game.fx.impact(hit_pos, -dir, light_color())
 			_hit_enemy(col as Enemy)
 			if pierce > 0:
 				pierce -= 1
@@ -76,7 +82,7 @@ func _physics_process(delta: float) -> void:
 			game.fx.impact(global_position, normal, C.RIVET_GOLD)
 			Sfx.play("ricochet", 0.0, -8.0)
 			continue
-		game.fx.impact(global_position, normal, _color())
+		game.fx.impact(global_position, normal, light_color())
 		game.inventory.on_wall_stop(global_position, normal)
 		queue_free()
 		return
@@ -94,13 +100,13 @@ func _hit_enemy(e: Enemy) -> void:
 	e.take_damage(dmg, crit, dir * 110.0, "rivet")
 
 
-func _color() -> Color:
+func light_color() -> Color:
 	return color_for(overdrive or ricocheted)
 
 
 func _draw() -> void:
 	var hot := overdrive or ricocheted
-	var col := _color()
+	var col := light_color()
 	var length := minf(_travel, 90.0 if hot else 64.0)
 	var side := dir.orthogonal()
 	var tail := -dir * length
@@ -111,7 +117,8 @@ func _draw() -> void:
 		PackedColorArray([Color(col, 0.35), Color(col, 0.0), Color(col, 0.35)]))
 	draw_polygon(PackedVector2Array([side * 2.4, tail * 0.7 + side * 0.4, tail * 0.7 - side * 0.4, -side * 2.4]),
 		PackedColorArray([Color(col, 1.0), Color(col, 0.0), Color(col, 0.0), Color(col, 1.0)]))
-	Glow.halo(self, Vector2.ZERO, 64.0, Color(col, 0.07)) # faint wash on the floor, even beyond the light cap
+	if not lit:
+		Glow.halo(self, Vector2.ZERO, 64.0, Color(col, 0.07)) # bolts past the light cap still wash the floor a little
 	Glow.halo(self, Vector2.ZERO, (26.0 if hot else 20.0) * pulse, Color(col, 0.6))
 	Glow.halo(self, -dir * 4.0, 9.0, Color(1, 1, 1, 0.9))
 	# White-hot core, stretched along the flight line.

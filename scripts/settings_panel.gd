@@ -48,7 +48,7 @@ func _init() -> void:
 	col.add_child(fullscreen)
 	lights = CheckButton.new()
 	lights.text = "Lights & shadows"
-	lights.tooltip_text = "Flashes of light from Vents and beams, with shadows behind walls. Turn off on slow devices."
+	lights.tooltip_text = "Light from energy bolts, Vents, beams and your lamp, with shadows behind walls and pillars. Turn off on slow devices."
 	lights.button_pressed = Settings.lights
 	lights.focus_mode = Control.FOCUS_ALL
 	lights.custom_minimum_size = Vector2(0, 44)
