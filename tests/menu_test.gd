@@ -1,5 +1,5 @@
 extends Node
-## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> run -> pause -> Main menu.
+## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> difficulty -> run -> pause -> Main menu.
 ## Run: godot --headless --path . res://tests/menu_test.tscn
 
 var step := 0
@@ -77,6 +77,16 @@ func _step() -> bool:
 				return true
 			scene.start_button.pressed.emit()
 		5:
+			if not scene.difficulty.visible or scene.buttons.visible:
+				_fail("Start did not open the difficulty list")
+				return true
+			var focused: Control = scene.get_viewport().gui_get_focus_owner()
+			var at: int = scene.difficulty.level_buttons.find(focused)
+			if at != Settings.difficulty:
+				_fail("the remembered difficulty is not focused")
+				return true
+			scene.difficulty.level_buttons[at].pressed.emit()
+		6:
 			if scene == null or scene.name != "Game":
 				_fail("Start did not begin a run")
 				return true
@@ -84,12 +94,12 @@ func _step() -> bool:
 			ev.action = "pause"
 			ev.pressed = true
 			Input.parse_input_event(ev)
-		6:
+		7:
 			if not scene.pause_menu.is_open or not paused:
 				_fail("Esc did not pause the run")
 				return true
 			scene.pause_menu.menu_button.pressed.emit()
-		7:
+		8:
 			if not scene is MainMenu or paused:
 				_fail("Main menu button did not return to an unpaused title screen")
 				return true

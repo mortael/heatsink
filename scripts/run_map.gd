@@ -11,14 +11,12 @@ extends RefCounted
 ##   among the usual 2-3, so the safe route has both without taking away the choice;
 ## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run;
 ## - an Elite door (red frame) is offered at least twice per Stratum, never as the only door,
-##   so the safe route always exists.
+##   so the safe route always exists. Harder difficulty levels offer Elite doors more often.
 
 const ROOMS := 12
 const GATE := ROOMS + 1
 const ELITE_FIRST := 3 # earliest room an Elite door can lead to
 const ELITE_LAST := 11
-const ELITE_MIN := 2
-const ELITE_CHANCE := 0.25
 
 const KINDS := {
 	"combat_item": {"name": "SALVAGE", "sub": "combat · pick 1 of 3 items", "color": Color(1.0, 0.6, 0.25), "combat": true},
@@ -37,11 +35,15 @@ var visited: Array[String] = []
 var exits: Array[String] = [] # doors out of the current room
 var extra_vault := false
 var elite_offers := 0
+var elite_min := 2
+var elite_chance := 0.25
 var _used := {} # non-combat types already taken this Stratum
 
 
 func _init(seed_value: int) -> void:
 	rng.seed = seed_value
+	elite_min = Difficulty.value("elite_min")
+	elite_chance = Difficulty.value("elite_chance")
 	extra_vault = rng.randf() < 0.5
 
 
@@ -89,7 +91,7 @@ func _roll_exits() -> Array[String]:
 		var s: String = specials[rng.randi_range(0, specials.size() - 1)]
 		out.append(s)
 		specials.erase(s)
-	if _elite_due(next) or (next >= ELITE_FIRST and next <= ELITE_LAST and rng.randf() < ELITE_CHANCE):
+	if _elite_due(next) or (next >= ELITE_FIRST and next <= ELITE_LAST and rng.randf() < elite_chance):
 		# An Elite always shares the exit with at least one other door.
 		count = mini(3, maxi(count, out.size() + 2))
 		out.append("elite")
@@ -115,10 +117,10 @@ func _roll_exits() -> Array[String]:
 
 ## True when this exit is the last chance to reach the minimum number of Elite offers.
 func _elite_due(next: int) -> bool:
-	if next < ELITE_FIRST or next > ELITE_LAST or elite_offers >= ELITE_MIN:
+	if next < ELITE_FIRST or next > ELITE_LAST or elite_offers >= elite_min:
 		return false
 	var chances_left := ELITE_LAST - next + 1
-	return chances_left <= ELITE_MIN - elite_offers
+	return chances_left <= elite_min - elite_offers
 
 
 func _available_specials(next: int) -> Array[String]:

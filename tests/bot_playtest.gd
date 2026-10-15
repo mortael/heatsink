@@ -5,6 +5,7 @@ extends Node
 ## "slagged" starts with the three Slagged items, "elite" always takes an Elite door when one is offered,
 ## "forge" starts with Tinder Rounds and 3 Cores so the Anvil can force a Fusion. Between fights the bot shops, rests, gambles
 ## and walks through a random door, so a long run exercises the whole Stratum route.
+## Add "diff=N" anywhere after the seconds (0 COLD .. 4 MELTDOWN, default 1 WARM) to play a difficulty level.
 
 var game: Node
 var frames := 0
@@ -36,7 +37,11 @@ var room_seen := -1
 
 
 func _ready() -> void:
-	var args := OS.get_cmdline_user_args()
+	var args := Array(OS.get_cmdline_user_args())
+	for a: String in args.duplicate():
+		if a.begins_with("diff="):
+			Settings.difficulty = Difficulty.clamp_level(int(a.substr(5)))
+			args.erase(a)
 	if args.size() > 0:
 		max_frames = int(args[0]) * 60
 	if args.size() > 1:
@@ -126,6 +131,8 @@ func _bot(p: Player) -> void:
 			close += 1
 		if e is Clinker and (e as Clinker).state == Clinker.S.WINDUP and d < 2.6 * C.TILE:
 			threat = e
+		if e is Sparkhound and (e as Sparkhound).state == Sparkhound.S.AIM and (e as Sparkhound).t < 0.3 and _in_lane(p.global_position, e.global_position, (e as Sparkhound).rush_lane(), 34.0):
+			threat = e
 	var centre: Vector2 = game.room.center()
 	if nearest == null:
 		p.bot_fire = false
@@ -203,6 +210,24 @@ func _dodge(p: Player) -> void:
 				var c := Geometry2D.get_closest_point_to_segment(pos, l.global_position, l.partner.global_position)
 				if c.distance_to(pos) < 50.0:
 					away += (pos - c).normalized() * 1.5 if c.distance_to(pos) > 1.0 else Vector2.UP
+	for s in get_tree().get_nodes_in_group("mortar_shells"):
+		var tgt: Vector2 = s.target
+		if pos.distance_to(tgt) < SlagMortar.MortarShell.RADIUS + 26.0:
+			away += (pos - tgt).normalized() * 2.0 if pos.distance_to(tgt) > 1.0 else Vector2.RIGHT * 2.0
+	for b in get_tree().get_nodes_in_group("enemy_bolts"):
+		var bolt: SlagBolt = b
+		var to := pos - bolt.global_position
+		if to.length() < 3.5 * C.TILE and to.dot(bolt.vel) > 0.0:
+			var dir := bolt.vel.normalized()
+			var miss := to - dir * to.dot(dir)
+			if miss.length() < SlagBolt.RADIUS + Player.RADIUS + 10.0:
+				away += (miss.normalized() if miss.length() > 0.5 else dir.orthogonal()) * 1.5
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is Sparkhound:
+			var h: Sparkhound = e
+			if h.state == Sparkhound.S.AIM and _in_lane(pos, h.global_position, h.rush_lane(), 40.0):
+				var side := h.facing.orthogonal()
+				away += (side if side.dot(pos - h.global_position) >= 0.0 else -side) * 2.0
 	for m in game.world.get_children():
 		if m is MoltenPatch and pos.distance_to(m.global_position) < MoltenPatch.RADIUS + 30.0:
 			away += (pos - m.global_position).normalized()
@@ -212,6 +237,12 @@ func _dodge(p: Player) -> void:
 	p.bot_move = away.normalized() if away != Vector2.ZERO else p.bot_move
 	if dash and p.dash_charges > 0 and p.dash_time <= 0.0:
 		p.bot_dash = true
+
+
+## True when pos sits within width of the segment from start along lane.
+func _in_lane(pos: Vector2, start: Vector2, lane: Vector2, width: float) -> bool:
+	var c := Geometry2D.get_closest_point_to_segment(pos, start, start + lane)
+	return c.distance_to(pos) < width
 
 
 ## Between fights: use the room's pedestals, then walk to a door.
@@ -299,6 +330,7 @@ func _report(p: Player) -> void:
 	if times.size() > 0:
 		avg /= times.size()
 	print("=== BOT PLAYTEST ===")
+	print("difficulty: %s" % Difficulty.level_name())
 	print("sim time: %.1fs  died: %s" % [frames / 60.0, game.dead])
 	print("rooms cleared: %d  current room: %d" % [times.size(), game.run.index])
 	print("clear times: %s" % str(times.map(func(t: float) -> String: return "%.1f" % t)))
@@ -344,6 +376,12 @@ func _room_shot(p: Player) -> void:
 				_save("forgewarden_breath")
 			elif f.state == Forgewarden.S.INHALE and f.t < 0.5:
 				_save("forgewarden_inhale")
+		elif e is Sparkhound and (e as Sparkhound).state == Sparkhound.S.AIM and (e as Sparkhound).t < 0.25:
+			_save("sparkhound_rush")
+		elif e is Slagspitter and (e as Slagspitter).state == Slagspitter.S.AIM and (e as Slagspitter).t < 0.25:
+			_save("slagspitter_fan")
+		elif e is SlagMortar and get_tree().get_nodes_in_group("mortar_shells").any(func(m: Node) -> bool: return m.progress() > 0.6):
+			_save("slag_mortar_shell")
 		elif e is Linesman:
 			var l: Linesman = e
 			if l.beam_active():

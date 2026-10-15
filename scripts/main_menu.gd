@@ -1,6 +1,6 @@
 class_name MainMenu
 extends Control
-## Title screen: Start, Codex, Settings and Quit (Quit is hidden in the browser and on phones).
+## Title screen: Start (then pick a difficulty), Codex, Settings and Quit (Quit is hidden in the browser and on phones).
 ## Works with mouse, touch, keys (arrows + Enter) and a pad (d-pad + A, B backs out).
 
 const GAME_SCENE := "res://main.tscn"
@@ -13,6 +13,7 @@ var settings_button: Button
 var quit_button: Button
 var settings: SettingsPanel
 var codex: CodexPanel
+var difficulty: DifficultyPanel
 var _embers: Array[Vector4] = [] # x, y, speed, size
 var _t := 0.0
 
@@ -33,7 +34,7 @@ func _ready() -> void:
 	buttons.add_theme_constant_override("separation", 14)
 	center.add_child(buttons)
 	start_button = UiStyle.button("START RUN")
-	start_button.pressed.connect(start_run)
+	start_button.pressed.connect(_show_difficulty)
 	buttons.add_child(start_button)
 	codex_button = UiStyle.button("CODEX")
 	codex_button.tooltip_text = "How to play: Heat, Vent, items, enemies and rooms"
@@ -53,7 +54,7 @@ func _ready() -> void:
 	settings.visible = false
 	settings.back.connect(_hide_settings)
 	center.add_child(settings)
-	# The Codex is bigger than the space under the title, so it gets the whole screen.
+	# The Codex and the difficulty list are bigger than the space under the title, so they get the whole screen.
 	var full := CenterContainer.new()
 	full.set_anchors_preset(Control.PRESET_FULL_RECT)
 	full.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -62,12 +63,24 @@ func _ready() -> void:
 	codex.visible = false
 	codex.back.connect(_hide_codex)
 	full.add_child(codex)
+	difficulty = DifficultyPanel.new()
+	difficulty.visible = false
+	difficulty.chosen.connect(func(_level: int) -> void: start_run())
+	difficulty.back.connect(func() -> void:
+		buttons.visible = true
+		start_button.grab_focus())
+	full.add_child(difficulty)
 	start_button.grab_focus()
 
 
 func start_run() -> void:
 	Sfx.play("portal", 0.0, -4.0)
 	get_tree().change_scene_to_file(GAME_SCENE)
+
+
+func _show_difficulty() -> void:
+	buttons.visible = false
+	difficulty.open()
 
 
 func _show_settings() -> void:
@@ -98,6 +111,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			settings.volume.grab_focus()
 		elif codex.visible:
 			codex.tabs[codex.page].grab_focus()
+		elif difficulty.visible:
+			difficulty.open()
 		else:
 			start_button.grab_focus()
 
@@ -127,7 +142,7 @@ func _draw() -> void:
 		var a := clampf(e.y * 1.4, 0.0, 1.0) * (0.5 + 0.5 * sin(_t * 3.0 + e.x * 40.0))
 		draw_circle(Vector2(e.x * s.x, e.y * s.y), e.w, Color(1.0, 0.55 + 0.3 * e.w / 3.0, 0.2, a * 0.8))
 
-	if codex.visible:
+	if codex.visible or difficulty.visible:
 		return
 	# Title, with a heat gauge that slowly fills and vents underneath it.
 	var ty := s.y * 0.5 - 150

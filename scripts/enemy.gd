@@ -31,6 +31,7 @@ const IGNITE_DPS_PER_STACK := 4.0
 
 
 func _ready() -> void:
+	max_hp *= Difficulty.value("hp")
 	hp = max_hp
 	collision_layer = C.LAYER_ENEMY
 	collision_mask = C.LAYER_WALL
