@@ -45,6 +45,9 @@ jobs:
       - name: Import project
         run: timeout 300 ~/godot/godot --headless --import
 
+      - name: Check room generator
+        run: timeout 300 ~/godot/godot --headless -s res://tests/room_gen_test.gd -- 2000 1
+
       - name: Export Windows
         run: |
           mkdir -p build/windows

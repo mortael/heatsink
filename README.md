@@ -71,7 +71,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 - **Crucible Wager:** feed in an item for 50% upgrade / 35% transmute / 15% Slagged, or stake 1 max Plating pip on a 60% coin flip for a Rare pick. Always one of the doors by room 10.
 - **Cooling Vault:** repair 2 pips or use the Anvil (see step 3), and sometimes a Stoke Altar (−1 max pip, Heat cap 120, Overheat +1 s). Always right before the Gate, sometimes once mid-run too.
 - **Slagged items** (Brittle Crown, Hungry Coal, Feral Valve) are strong with a drawback printed in red. Finish the Absolution shown on the HUD and the drawback goes away.
-- Room layouts come from 8 hand-made templates, each mirrored into 4 variants.
+- Combat rooms are **generated**: wall shapes (pillars, bars, L-, T- and U-shapes, crosses) are stamped into the room, usually mirrored or rotated so it looks designed. Every room is checked before you see it: the entry and all doors stay reachable, there are no sealed pockets for enemies to spawn in, almost no one-tile slits, and cover in at least three quarters of the room. Elite rooms get less cover so the Forgewarden has space. 1 in 4 combat rooms still uses one of the 8 hand-made templates, and room 1 and the Gate keep their fixed layout.
 - The **Foundry Gate** is a tougher 3-wave fight that stands in for the Stratum boss until bosses exist.
 - Not built yet: Scorched Paths (two chained Elites), Legendary items and elite affixes. Until Legendaries exist, the Ember Coin pays out a Rare.
 
@@ -94,10 +94,12 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/picker.gd` | Pick-1-of-N card screen for rewards, the Crucible and the coin flip |
 | `scripts/run_map.gd` | The Stratum route: room types and door rolls with the GDD's constraints |
 | `scripts/room.gd`, `scripts/layouts.gd` | Room built from a layout template, plus pathing and line-of-sight helpers |
+| `scripts/room_gen.gd` | Procedural combat-room generator and the rules every room must pass |
 | `scripts/door.gd` | Doors that preview the next room |
 | `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
+| `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 
 Automated playtest (headless):
 
@@ -106,3 +108,9 @@ godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 
 ```
 
 Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
+
+Room generator check (exits with code 1 on a bad room):
+
+```
+godot --headless --path . -s res://tests/room_gen_test.gd -- 2000 1
+```
