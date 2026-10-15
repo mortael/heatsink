@@ -24,6 +24,7 @@ var hud: Hud
 var director: Director
 var inventory: Inventory
 var picker: Picker
+var touch: TouchControls
 var run: RunMap
 
 var dead := false
@@ -81,6 +82,9 @@ func _ready() -> void:
 	picker.game = self
 	add_child(picker)
 	picker.chosen.connect(_on_picked)
+	touch = TouchControls.new()
+	touch.game = self
+	add_child(touch)
 	run = RunMap.new(randi())
 	_build_room("combat_item")
 

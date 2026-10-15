@@ -1,6 +1,6 @@
 name: Build and release
 
-# Every merge to main exports a Windows build and a Web build, publishes both
+# Every merge to main exports Windows, Web and Android builds, publishes them
 # as a GitHub Release, and deploys the Web build to GitHub Pages.
 # Pull requests only run the export, to catch a broken build before merging.
 on:
@@ -31,7 +31,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-win-web
+          key: godot-${{ env.GODOT_VERSION }}-win-web-android
 
       - name: Download Godot and export templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
@@ -44,8 +44,8 @@ jobs:
           curl -sSfL --retry 3 --connect-timeout 30 --max-time 1200 -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          # Only the Windows x86_64 and Web templates; the full set is ~1.3 GB.
-          unzip -q -j /tmp/templates.tpz 'templates/version.txt' 'templates/web_*' 'templates/windows_*x86_64*' -d "$dest"
+          # Only the Windows x86_64, Web and Android APK templates; the full set is ~1.3 GB.
+          unzip -q -j /tmp/templates.tpz 'templates/version.txt' 'templates/web_*' 'templates/windows_*x86_64*' 'templates/android_*.apk' -d "$dest"
           rm /tmp/godot.zip /tmp/templates.tpz
 
       - name: Import project
@@ -66,9 +66,34 @@ jobs:
           timeout 600 ~/godot/godot --headless --export-release "Web" build/web/index.html
           test -s build/web/index.wasm
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Export Android
+        env:
+          # A committed debug key, so every build is signed the same way and installs over
+          # the previous one. Fine for sideloading; a Play Store build needs a private key.
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ github.workspace }}/ci/heatsink-debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
+        run: |
+          # The runner image ships the Android SDK (platform-tools, build-tools) at $ANDROID_HOME.
+          mkdir -p ~/.config/godot
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' \
+            "$ANDROID_HOME" "$JAVA_HOME" > ~/.config/godot/editor_settings-4.5.tres
+          # A rising version code lets each build install as an update.
+          sed -i -e 's/^version\/code=.*/version\/code=${{ github.run_number }}/' \
+            -e 's/^version\/name=.*/version\/name="0.1.${{ github.run_number }}"/' export_presets.cfg
+          mkdir -p build/android
+          timeout 600 ~/godot/godot --headless --export-release "Android" build/android/HEATSINK.apk
+          test -s build/android/HEATSINK.apk
+
       - name: Package
         run: |
           mkdir -p dist
+          cp build/android/HEATSINK.apk dist/HEATSINK-android.apk
           (cd build/windows && zip -q -9 ../../dist/HEATSINK-windows.zip HEATSINK.exe)
           (cd build/web && zip -q -9 -r ../../dist/HEATSINK-web.zip .)
           ls -la dist
@@ -102,16 +127,17 @@ jobs:
           sha="${{ github.sha }}"
           if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             # A re-run of this workflow: refresh the assets on the existing release.
-            gh release upload "$tag" dist/*.zip --clobber --repo "${{ github.repository }}"
+            gh release upload "$tag" dist/* --clobber --repo "${{ github.repository }}"
             exit 0
           fi
-          gh release create "$tag" dist/*.zip \
+          gh release create "$tag" dist/* \
             --repo "${{ github.repository }}" \
             --target "$sha" \
             --title "HEATSINK build ${{ github.run_number }}" \
             --notes "Automatic build of \`${sha:0:7}\` on main.
 
           - **Windows:** download HEATSINK-windows.zip, unzip, run HEATSINK.exe.
+          - **Android:** download HEATSINK-android.apk on the phone and open it (allow installing unknown apps).
           - **Browser:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           - **Web files:** HEATSINK-web.zip, for hosting elsewhere."
 
