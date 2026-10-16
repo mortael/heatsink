@@ -1,5 +1,6 @@
 extends Node
-## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> difficulty -> run -> pause -> Main menu.
+## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> Frame -> difficulty (and back to the
+## Frames) -> run as the Furnace -> pause -> Main menu.
 ## Run: godot --headless --path . res://tests/menu_test.tscn
 
 var step := 0
@@ -77,29 +78,51 @@ func _step() -> bool:
 				return true
 			scene.start_button.pressed.emit()
 		5:
-			if not scene.difficulty.visible or scene.buttons.visible:
-				_fail("Start did not open the difficulty list")
+			if not scene.frames.visible or scene.buttons.visible:
+				_fail("Start did not open the Frame cards")
 				return true
+			var focused: Control = scene.get_viewport().gui_get_focus_owner()
+			if scene.frames.cards.find(focused) != Frames.ORDER.find(Settings.frame):
+				_fail("the remembered Frame is not focused")
+				return true
+			scene.frames.cards[Frames.ORDER.find("furnace")].pressed.emit()
+		6:
+			if not scene.difficulty.visible or scene.frames.visible:
+				_fail("picking a Frame did not open the difficulty list")
+				return true
+			if Settings.frame != "furnace":
+				_fail("the Frame pick was not remembered")
+				return true
+			scene.difficulty.close()
+		7:
+			if not scene.frames.visible or scene.difficulty.visible:
+				_fail("Back from the difficulty list did not return to the Frames")
+				return true
+			scene.frames.cards[Frames.ORDER.find("furnace")].pressed.emit()
+		8:
 			var focused: Control = scene.get_viewport().gui_get_focus_owner()
 			var at: int = scene.difficulty.level_buttons.find(focused)
 			if at != Settings.difficulty:
 				_fail("the remembered difficulty is not focused")
 				return true
 			scene.difficulty.level_buttons[at].pressed.emit()
-		6:
+		9:
 			if scene == null or scene.name != "Game":
 				_fail("Start did not begin a run")
+				return true
+			if scene.player.frame != "furnace" or scene.player.maul == null:
+				_fail("the run did not start with the picked Frame")
 				return true
 			var ev := InputEventAction.new()
 			ev.action = "pause"
 			ev.pressed = true
 			Input.parse_input_event(ev)
-		7:
+		10:
 			if not scene.pause_menu.is_open or not paused:
 				_fail("Esc did not pause the run")
 				return true
 			scene.pause_menu.menu_button.pressed.emit()
-		8:
+		11:
 			if not scene is MainMenu or paused:
 				_fail("Main menu button did not return to an unpaused title screen")
 				return true

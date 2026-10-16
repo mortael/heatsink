@@ -104,6 +104,14 @@ func _draw_view() -> void:
 		view.draw_rect(r, Color(0.1, 0.1, 0.1, 0.8))
 		if i < p.pips:
 			view.draw_rect(r.grow(-2), Color(0.8, 0.85, 0.9))
+	if p.shield > 0.0:
+		# Furnace Slag Shield: one golden pip that takes the next hit.
+		var sr := Rect2(24 + p.max_pips * 30 + 6, 16, 24, 18)
+		var blink := p.shield > 1.0 or int(p.shield * 10.0) % 2 == 0
+		view.draw_rect(sr, Color(0.25, 0.15, 0.05, 0.9))
+		if blink:
+			view.draw_rect(sr.grow(-2), Color(1.0, 0.72, 0.3))
+		view.draw_rect(Rect2(sr.position.x, sr.end.y + 2, sr.size.x * p.shield / Player.SLAG_SHIELD_TIME, 3), Color(1.0, 0.72, 0.3))
 	view.draw_string(font, Vector2(24, 52), "PLATING", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.7, 0.7))
 	_draw_items(font)
 

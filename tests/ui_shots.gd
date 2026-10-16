@@ -46,7 +46,7 @@ func _process(_delta: float) -> void:
 		45, 55, 65, 75, 85:
 			_shot("codex_%d" % ((frame - 45) / 10))
 		90:
-			menu.codex.show_page(2)
+			menu.codex.show_page(3) # ITEMS
 			menu.codex.scroll.scroll_vertical = 900
 		95:
 			_shot("codex_2_scrolled")

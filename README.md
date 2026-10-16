@@ -1,6 +1,6 @@
 # HEATSINK prototype
 
-Playable build for the HEATSINK GDD: the Riveter Frame, the Heat gauge, Vent, six enemies (Clinker, Sparkhound, Slagspitter, Slag Mortar, Linesman, Forgewarden), five difficulty levels, items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
+Playable build for the HEATSINK GDD: three Frames (Riveter, Furnace, Arclight), the Heat gauge, Vent, six enemies (Clinker, Sparkhound, Slagspitter, Slag Mortar, Linesman, Forgewarden), five difficulty levels, items with Resonance and Fusions, and a full Stratum route of 12 rooms plus the Foundry Gate, with doors, Elite rooms, a shop, a rest room with the Anvil and a gamble room.
 
 ## Download a build
 
@@ -18,7 +18,7 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 
 1. Install Godot 4.7.2 (standard build, not .NET).
 2. Open Godot, click **Import**, and pick `project.godot` in this folder.
-3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run**, **Codex** (how to play: Heat, Vent, every item, the enemies and the room types), **Settings** (volume, screen shake, fullscreen, lights & shadows, an FPS counter; saved between sessions) and **Quit** (not shown in the browser). The Codex is also in the pause menu.
+3. Press **F5** (or the Play button). The game opens on the main menu: **Start Run** (pick a Frame, then a difficulty), **Codex** (how to play: Heat, Vent, every item, the enemies and the room types), **Settings** (volume, screen shake, fullscreen, lights & shadows, an FPS counter; saved between sessions) and **Quit** (not shown in the browser). The Codex is also in the pause menu.
 
 ## Controls
 
@@ -34,9 +34,25 @@ The export settings live in `export_presets.cfg`. The Web build is single-thread
 | Restart after death | R | Start |
 | Main menu after death | Esc | |
 
+## Frames (vertical slice step 4)
+
+START RUN first asks which Frame you take; the choice is remembered. Each Frame has its own weapon, Overdrive, Vent and passive (GDD section 3). Fire is the same button for all three, so keyboard, pad and the touch aim stick all work.
+
+| Frame | Weapon | Overdrive (Hot) | Vent | Passive |
+| --- | --- | --- | --- | --- |
+| **Riveter** (6 pips) | Rivet Gun: 5 shots/s, 8 dmg, +6 Heat per shot, rivets stick | Pierce 1, ricochet once | x1.0, stuck rivets detonate | Tension: +5% Vent damage per rivet |
+| **Furnace** (7 pips) | Slag Maul: hold to swing a 3-hit combo (22 / 22 / 40) in a 150° arc, +12 Heat per swing; the third hit leaves a Molten pool | Every swing throws a shockwave 4 tiles forward (15 dmg) | x1.5; at 80+ Heat a Slag Shield blocks the next hit for 4 s (gold pip on the HUD) | Momentum: hits chained within 0.6 s delay cooling by 0.3 s each, up to 2 s |
+| **Arclight** (6 pips) | Coil Lance: hold to channel a 7-tile beam, 40 dmg/s, +20 Heat/s; chains to 1 more enemy, +1 per Heat band (chained enemies take half) | The beam forks into 3 | x0.8, leaves a Static Pylon that zaps for 12 every 0.5 s for 4 s | Grounded: 1 s after you stop channelling, Heat cools twice as fast |
+
+- Items work with every Frame ("hits" means rivets, swings, shockwaves and beam pulses; the beam triggers on-hit items on every 3rd pulse per enemy). Bank Shot and Rebound Charge are only offered to the Riveter, Splinter Heads not to the Arclight. Brittle Crown gives +2 rivets, a shockwave on every swing, or +2 beam forks.
+- Item offers lean toward the Frame's native keyword: Shrapnel, Molten or Arc.
+- New keyword **Molten** with two items: **Slag Trail** (dashes leave Molten pools) and **Cinder Spill** (kills while Hot leave a pool; your pools set enemies on fire). Its Resonance makes pools 50% wider and 1 s longer.
+- The Furnace has 7 Plating instead of 6: in melee the bot lost about twice as many runs as the Riveter on HOT without it.
+- The Codex has a FRAMES page.
+
 ## What to try
 
-- Fire to build Heat. At 80+ you're **Hot**: rivets turn gold, pierce one enemy and ricochet off walls.
+- Fire to build Heat. At 80+ you're **Hot**: rivets turn gold, pierce one enemy and ricochet off walls (the Furnace throws shockwaves, the Arclight's beam forks).
 - Keep firing to 100 and you **Overheat**: the gun locks for 2 s, you move slower, and every hit costs an extra pip.
 - **Vent** dumps all Heat as a nova that grows with Heat, and every rivet stuck in an enemy detonates. The ring around your Sink fills while the Vent cools down and glows orange (with a flash and a soft chime) when it's ready again.
 - **Dash** gives brief invulnerability and quenches 10 Heat, so you can use it to stay in the Hot band longer.
@@ -101,7 +117,10 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | Path | What it is |
 | --- | --- |
 | `scripts/heat.gd` | Heat gauge, bands, decay, Overheat |
-| `scripts/player.gd` | Movement, Rivet Gun, dash, Vent, damage |
+| `scripts/player.gd` | Movement, Rivet Gun, dash, Vent, damage; picks the Frame's weapon |
+| `scripts/frames.gd`, `scripts/frame_panel.gd` | The three Frames' data and the Frame cards after START RUN |
+| `scripts/slag_maul.gd`, `scripts/shockwave.gd`, `scripts/slag_pool.gd` | Furnace: maul combo and Momentum, Overdrive shockwaves, the Molten pools the player leaves |
+| `scripts/coil_lance.gd`, `scripts/static_pylon.gd` | Arclight: channelled beam with chains and forks, the Vent's Static Pylon |
 | `scripts/rivet.gd` | Projectile with embed, pierce and ricochet |
 | `scripts/enemy.gd`, `scripts/clinker.gd` | Enemy base and the Clinker fodder |
 | `scripts/linesman.gd` | Linesman: Tether beam and Snap Back |
@@ -130,6 +149,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 | `tests/menu_test.tscn` | Walks menu → settings → codex → run → pause → menu and fails if a step doesn't work |
+| `tests/frame_shots.tscn` | Screenshots of the Frame cards, the Codex page and each Frame's weapon, Overdrive and Vent (needs a renderer, not headless) |
 | `tests/ui_shots.tscn` | Screenshots of the Codex, the FPS counter and the Vent ring (needs a renderer, not headless) |
 | `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam, a Vent and bolt light and shadows by the pillars (needs a renderer, not headless; `--rendering-method forward_plus` shows bloom, `gl_compatibility` the Android/web look) |
 
@@ -139,7 +159,7 @@ Automated playtest (headless):
 godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 x
 ```
 
-Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. Add `diff=0` to `diff=4` to play COLD to MELTDOWN (default WARM). The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
+Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. Add `diff=0` to `diff=4` to play COLD to MELTDOWN (default WARM), and `frame=furnace` or `frame=arclight` to play another Frame (default Riveter). The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
 
 Room generator check (exits with code 1 on a bad room):
 
