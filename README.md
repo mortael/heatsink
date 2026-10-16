@@ -122,6 +122,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
 | `scripts/scrap_bit.gd` | Scrap pickups |
 | `scripts/glow.gd`, `scripts/lights.gd`, `scripts/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
+| `scripts/bloom.gd` | Soft bloom on bright things; desktop builds only (they run Forward+), Android and web stay on Compatibility without bloom |
 | `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
 | `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
 | `scripts/codex_panel.gd` | The Codex: how-to-play pages, with items and room types read from the game data |
@@ -130,7 +131,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 | `tests/menu_test.tscn` | Walks menu → settings → codex → run → pause → menu and fails if a step doesn't work |
 | `tests/ui_shots.tscn` | Screenshots of the Codex, the FPS counter and the Vent ring (needs a renderer, not headless) |
-| `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam, a Vent and bolt light and shadows by the pillars (needs a renderer, not headless) |
+| `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam, a Vent and bolt light and shadows by the pillars (needs a renderer, not headless; `--rendering-method forward_plus` shows bloom, `gl_compatibility` the Android/web look) |
 
 Automated playtest (headless):
 

@@ -1,7 +1,10 @@
 extends Node
 ## Staged screenshots for the lighting: rivet tracers crossing a live Linesman beam, a full Vent
 ## next to the pillars of the first room, the open doors, then bolts fired into the dark and past the pillars. Needs a real renderer, not --headless:
-## xvfb-run godot --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
+## Android/web look (Compatibility renderer, no bloom):
+## xvfb-run godot --rendering-method gl_compatibility --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
+## Windows look (Forward+ with bloom):
+## xvfb-run godot --rendering-method forward_plus --rendering-driver vulkan --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
 
 var game: Node
 var frame := 0
@@ -23,6 +26,8 @@ func _ready() -> void:
 		return
 	seed(7)
 	Settings.lights = true # a saved "off" on this machine must not hide what the shots are for
+	Settings.bloom = true
+	print("lighting shots: renderer %s, bloom %s" % [RenderingServer.get_current_rendering_method(), "on" if Bloom.supported() else "off (Compatibility)"])
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 

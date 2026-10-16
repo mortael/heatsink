@@ -1,5 +1,5 @@
 extends Node
-## Player settings (volume, screen shake, fullscreen, lights, FPS counter, difficulty), saved to user://settings.cfg and applied at startup.
+## Player settings (volume, screen shake, fullscreen, lights, bloom, FPS counter, difficulty), saved to user://settings.cfg and applied at startup.
 
 const PATH := "user://settings.cfg"
 
@@ -7,6 +7,7 @@ var volume := 0.8 # master volume, 0..1
 var shake := 1.0 # screen shake strength, 0..1
 var fullscreen := false
 var lights := true # dynamic 2D lights and wall shadows; glow drawing stays on either way
+var bloom := true # soft glow haze on desktop builds (see Bloom); ignored where unsupported
 var show_fps := false # small frames-per-second readout in the top-left corner
 var difficulty := Difficulty.DEFAULT # 0..4, chosen when starting a run
 var dirty := false # changed since the last save; saved on quit if the panel was never closed
@@ -23,6 +24,9 @@ func _ready() -> void:
 		var l: Variant = cfg.get_value("video", "lights", lights)
 		if l is bool:
 			lights = l
+		var b: Variant = cfg.get_value("video", "bloom", bloom)
+		if b is bool:
+			bloom = b
 		var f: Variant = cfg.get_value("video", "show_fps", show_fps)
 		if f is bool:
 			show_fps = f
@@ -63,6 +67,7 @@ func save() -> void:
 	cfg.set_value("video", "shake", shake)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "lights", lights)
+	cfg.set_value("video", "bloom", bloom)
 	cfg.set_value("video", "show_fps", show_fps)
 	cfg.set_value("game", "difficulty", difficulty)
 	var err := cfg.save(PATH)
