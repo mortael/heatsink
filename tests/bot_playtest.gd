@@ -384,7 +384,7 @@ func _report(p: Player) -> void:
 		print("ledger: %s" % str(game.ledger_lines()))
 	var left := get_tree().get_nodes_in_group("enemies")
 	if not left.is_empty():
-		print("enemies left: %d  first at %s  player at %s  pending portals: %d" % [left.size(), str(left[0].global_position), str(p.global_position), game.director.pending])
+		print("enemies left: %d (%s)  first at %s  player at %s  pending portals: %d" % [left.size(), left[0].source_name, str(left[0].global_position), str(p.global_position), game.director.pending])
 
 
 ## One screenshot per room type (shortly after entering), plus the first open doors.

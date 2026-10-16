@@ -115,6 +115,8 @@ func is_invulnerable() -> bool:
 func _physics_process(delta: float) -> void:
 	if game.dead:
 		velocity = Vector2.ZERO
+		if lance != null:
+			lance.tick(delta, false) # let go of the beam
 		return
 	var inv: Inventory = game.inventory
 	heat.decay_rate = Heat.DECAY_RATE * inv.heat_decay_mult()

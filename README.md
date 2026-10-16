@@ -42,7 +42,7 @@ START RUN first asks which Frame you take; the choice is remembered. Each Frame 
 | --- | --- | --- | --- | --- |
 | **Riveter** (6 pips) | Rivet Gun: 5 shots/s, 8 dmg, +6 Heat per shot, rivets stick | Pierce 1, ricochet once | x1.0, stuck rivets detonate | Tension: +5% Vent damage per rivet |
 | **Furnace** (7 pips) | Slag Maul: hold to swing a 3-hit combo (22 / 22 / 40) in a 150° arc, +12 Heat per swing; the third hit leaves a Molten pool | Every swing throws a shockwave 4 tiles forward (15 dmg) | x1.5; at 80+ Heat a Slag Shield blocks the next hit for 4 s (gold pip on the HUD) | Momentum: hits chained within 0.6 s delay cooling by 0.3 s each, up to 2 s |
-| **Arclight** (6 pips) | Coil Lance: hold to channel a 7-tile beam, 40 dmg/s, +20 Heat/s; chains to 1 more enemy, +1 per Heat band (chained enemies take half) | The beam forks into 3 | x0.8, leaves a Static Pylon that zaps for 12 every 0.5 s for 4 s | Grounded: 1 s after you stop channelling, Heat cools twice as fast |
+| **Arclight** (6 pips) | Coil Lance: hold to channel a 7-tile beam, 40 dmg/s, +20 Heat/s; chains to 1 more enemy, +1 per Heat band (chained enemies take 35%) | The beam forks into 3 | x0.8, leaves a Static Pylon that zaps for 12 every 0.5 s for 4 s | Grounded: 1 s after you stop channelling, Heat cools twice as fast |
 
 - Items work with every Frame ("hits" means rivets, swings, shockwaves and beam pulses; the beam triggers on-hit items on every 3rd pulse per enemy). Bank Shot and Rebound Charge are only offered to the Riveter, Splinter Heads not to the Arclight. Brittle Crown gives +2 rivets, a shockwave on every swing, or +2 beam forks.
 - Item offers lean toward the Frame's native keyword: Shrapnel, Molten or Arc.
@@ -76,13 +76,15 @@ START RUN first asks which Frame you take; the choice is remembered. Each Frame 
 
 START RUN asks how hot you run; the choice is remembered. WARM is the original balance.
 
-| Level | What changes | Bot deaths (24 runs) |
+| Level | What changes | Bot deaths, Riveter / Furnace / Arclight (16 runs each) |
 | --- | --- | --- |
-| COLD | 70% of the enemies, 85% HP, specials later, fewer Elite doors | 0% |
-| WARM | The original balance | 0% |
-| HOT | 1.5x enemies, +1 wave per room, waves overlap sooner, specials earlier, Clinkers surround you | 17% |
-| SEARING | 1.85x enemies, +2 waves that pile up, +15% HP, at least 3 Elite doors, Slagspitters aim ahead | 46% |
-| MELTDOWN | 2.1x enemies, +2 waves, +25% HP, two Forgewardens at the Gate | 67% |
+| COLD | 70% of the enemies, 85% HP, specials later, fewer Elite doors | 0 / 0 / 0 |
+| WARM | The original balance | 1 / 1 / 0 |
+| HOT | 1.5x enemies, +1 wave per room, waves overlap sooner, specials earlier, Clinkers surround you | 1 / 4 / 0 |
+| SEARING | 1.85x enemies, +2 waves that pile up, +15% HP, at least 3 Elite doors, Slagspitters aim ahead | 10 / 7 / 3 |
+| MELTDOWN | 2.1x enemies, +2 waves, +25% HP, two Forgewardens at the Gate | 11 / 11 / 6 |
+
+The bot never lets the Arclight Overheat, which is the Frame's real risk for a person, so its numbers flatter it.
 
 - **Sparkhound** (chaser, from room 2): a fast low hound. It plants its feet while an orange arrow shows its lane for 0.55 s, then rushes 6 tiles. Step sideways or dash; a missed rush leaves it skidding for 0.9 s.
 - **Slagspitter** (zoner, from room 4): keeps 5-8 tiles away. Five dotted cyan lanes show for 0.6 s, then five slow slag bolts fly along them.
