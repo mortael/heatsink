@@ -20,6 +20,7 @@ var _travel := 0.0 # px since leaving the gun or the last bounce; the tracer nev
 var _exclude: Array[RID] = []
 var spawn_id := 0 # rising count, so Lights can find the newest bolts
 var lit := false # set by Lights while a real light follows this bolt
+var origin := Vector2.INF # the shooter's centre; set it so a muzzle poking into a wall can't fire through it
 
 static var _spawned := 0
 
@@ -30,6 +31,19 @@ func _ready() -> void:
 	_spawned += 1
 	spawn_id = _spawned
 	add_to_group("bolts") # Lights hangs a small light on the newest bolts in flight
+	_pull_back_to_cover()
+
+
+## The muzzle sits outside the shooter, so flush against a pillar it can end up inside or behind
+## the pillar, where the flight ray never sees it. Trace from the shooter's centre to the muzzle
+## and, when something is in between, start the bolt just in front of it so it hits that instead.
+func _pull_back_to_cover() -> void:
+	if origin == Vector2.INF:
+		return
+	var q := PhysicsRayQueryParameters2D.create(origin, global_position, C.LAYER_WALL | C.LAYER_ENEMY)
+	var hit := get_world_2d().direct_space_state.intersect_ray(q)
+	if not hit.is_empty():
+		global_position = (hit.position as Vector2) + (origin - (hit.position as Vector2)).normalized() * 0.5
 
 
 ## Normal bolts burn electric blue-white; Overdrive and ricochets burn gold.

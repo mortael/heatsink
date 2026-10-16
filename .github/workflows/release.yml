@@ -57,6 +57,9 @@ jobs:
       - name: Check menus
         run: timeout 300 ~/godot/godot --headless --path . res://tests/menu_test.tscn
 
+      - name: Check bolts can't fire through pillars
+        run: timeout 300 ~/godot/godot --headless --path . --fixed-fps 60 res://tests/muzzle_test.tscn
+
       - name: Export Windows
         run: |
           mkdir -p build/windows

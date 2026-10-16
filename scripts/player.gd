@@ -217,6 +217,7 @@ func _fire() -> void:
 	var r := Rivet.new()
 	r.game = game
 	r.position = global_position + aim_dir * (RADIUS + 6.0)
+	r.origin = global_position
 	r.dir = aim_dir.rotated(randf_range(-0.025, 0.025))
 	r.overdrive = hot
 	r.pierce = 1 if hot else 0
@@ -228,6 +229,7 @@ func _fire() -> void:
 		var extra := Rivet.new()
 		extra.game = game
 		extra.position = r.position
+		extra.origin = global_position
 		extra.dir = r.dir.rotated(0.12 * side)
 		extra.overdrive = hot
 		extra.pierce = r.pierce
