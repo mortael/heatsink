@@ -26,6 +26,15 @@ func has(id: String) -> bool:
 	return owned.has(id) or fusions.has(id) or forged.values().has(id)
 
 
+## The Frame being played; items that only make sense for some Frames are left out of offers.
+func frame() -> String:
+	return game.player.frame if game != null and game.player != null else Frames.DEFAULT
+
+
+func fits(id: String) -> bool:
+	return ItemDB.fits(id, frame())
+
+
 func count_keyword(kw: String) -> int:
 	var n := 0
 	for id in owned:
@@ -125,18 +134,20 @@ func force_fusion(f: String) -> void:
 	changed.emit()
 
 
-## Pick n distinct offers. Each slot rolls 40% from keywords you already own, 60% from the open pool.
+## Pick n distinct offers. Each slot rolls 40% from keywords you already own or your Frame's native keyword,
+## 60% from the open pool. Items that don't fit the Frame are never offered.
 ## Slagged items never appear here; filter narrows the pool and exclude skips ids already on show.
 ## An unfiltered offer pads empty slots with Patch Kits; a filtered one returns only matching items,
 ## so it can come back short or empty.
 func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[String]:
 	var pool: Array[String] = []
 	for id: String in ItemDB.ITEMS:
-		if owned.has(id) or exclude.has(id) or ItemDB.is_slagged(id):
+		if owned.has(id) or exclude.has(id) or ItemDB.is_slagged(id) or not fits(id):
 			continue
 		if filter.is_valid() and not filter.call(id):
 			continue
 		pool.append(id)
+	var native: String = Frames.info(frame()).keyword
 	var result: Array[String] = []
 	for i in n:
 		if pool.is_empty():
@@ -144,7 +155,7 @@ func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[S
 		var themed: Array[String] = []
 		for id in pool:
 			var kw: String = ItemDB.ITEMS[id].keyword
-			if kw != "conductor" and count_keyword(kw) > 0:
+			if kw != "conductor" and (count_keyword(kw) > 0 or kw == native):
 				themed.append(id)
 		var pick: String = themed.pick_random() if not themed.is_empty() and randf() < 0.4 else pool.pick_random()
 		pool.erase(pick)
@@ -211,8 +222,17 @@ func cursed(id: String) -> bool:
 	return owned.has(id) and ItemDB.is_slagged(id) and not absolved_ids.has(id)
 
 
+## Brittle Crown: +2 rivets (Riveter), a shockwave on every swing (Furnace) or +2 beam forks (Arclight).
 func extra_projectiles() -> int:
-	return 2 if has("brittle_crown") else 0
+	return 2 if has("brittle_crown") and frame() == "riveter" else 0
+
+
+func extra_shockwaves() -> int:
+	return 1 if has("brittle_crown") and frame() == "furnace" else 0
+
+
+func extra_forks() -> int:
+	return 2 if has("brittle_crown") and frame() == "arclight" else 0
 
 
 func vent_damage_mult() -> float:
@@ -300,14 +320,31 @@ func shard_count(base: int) -> int:
 	return base + (2 if resonance("shrapnel") else 0)
 
 
+func molten_scale() -> float:
+	return 1.5 if resonance("molten") else 1.0
+
+
+func molten_extra_life() -> float:
+	return 1.0 if resonance("molten") else 0.0
+
+
+func molten_dps() -> float:
+	return SlagPool.DPS * (2.0 if is_tempered("slag_trail") else 1.0)
+
+
 # ---------------------------------------------------------------- hooks
 
 func on_rivet_hit(e: Enemy, rivet: Rivet, crit: bool) -> void:
+	on_weapon_hit(e, rivet.overdrive, crit)
+
+
+## Every Frame's weapon calls this once per hit: a rivet, a maul swing or shockwave, or a beam pulse.
+func on_weapon_hit(e: Enemy, hot: bool, crit: bool) -> void:
 	if has("bellows_valve") and game.player.heat.band >= Heat.Band.WARM:
 		proc_bonus = minf(0.2, proc_bonus + 0.02)
 	var times := 2 if crit and has("cinder_lens") else 1
 	for i in times:
-		_apply_on_hit(e, rivet.overdrive)
+		_apply_on_hit(e, hot)
 	if has("static_rivets"):
 		_static_hits += 1
 		if _static_hits % (3 if is_tempered("static_rivets") else 5) == 0:
@@ -328,8 +365,38 @@ func _apply_on_hit(e: Enemy, hot: bool) -> void:
 		e.add_ignite(3 if is_tempered("pyre_coating") else 2, ignite_cap())
 
 
+## A Molten pool you made burns an enemy. Cinder Spill pools also set it on fire.
+func on_molten_tick(e: Enemy) -> void:
+	if has("cinder_spill"):
+		e.add_ignite(1, ignite_cap())
+
+
+## Slag Trail: a Molten pool where a dash starts and where it ends.
+func on_dash(from: Vector2) -> void:
+	if has("slag_trail"):
+		spawn_pool(from, 0.7)
+
+
+func on_dash_end(at: Vector2) -> void:
+	if has("slag_trail"):
+		spawn_pool(at, 0.7)
+
+
+func spawn_pool(pos: Vector2, scale := 1.0) -> void:
+	var pool := SlagPool.new()
+	pool.game = game
+	pool.position = pos
+	pool.radius = SlagPool.RADIUS * scale
+	pool.dps = molten_dps()
+	game.world.add_child.call_deferred(pool)
+
+
 func on_kill(e: Enemy) -> void:
 	var pos := e.global_position
+	if has("cinder_spill"):
+		var at := Heat.Band.WARM if is_tempered("cinder_spill") else Heat.Band.HOT
+		if game.player.heat.band >= at and game.player.heat.band != Heat.Band.OVERHEAT:
+			spawn_pool(pos, 0.6)
 	if e.last_kind == "vent" and cursed("hungry_coal"):
 		_progress("hungry_coal", 1.0)
 	if has("tinder_rounds") and e.ignite_stacks > 1:

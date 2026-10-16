@@ -1,5 +1,5 @@
 extends Node
-## Player settings (volume, screen shake, fullscreen, lights, bloom, FPS counter, difficulty), saved to user://settings.cfg and applied at startup.
+## Player settings (volume, screen shake, fullscreen, lights, bloom, FPS counter, difficulty, Frame), saved to user://settings.cfg and applied at startup.
 
 const PATH := "user://settings.cfg"
 
@@ -10,6 +10,7 @@ var lights := true # dynamic 2D lights and wall shadows; glow drawing stays on e
 var bloom := true # soft glow haze on desktop builds (see Bloom); ignored where unsupported
 var show_fps := false # small frames-per-second readout in the top-left corner
 var difficulty := Difficulty.DEFAULT # 0..4, chosen when starting a run
+var frame := Frames.DEFAULT # riveter / furnace / arclight, chosen when starting a run
 var dirty := false # changed since the last save; saved on quit if the panel was never closed
 
 
@@ -33,6 +34,9 @@ func _ready() -> void:
 		var d: Variant = cfg.get_value("game", "difficulty", difficulty)
 		if d is int:
 			difficulty = Difficulty.clamp_level(d)
+		var fr: Variant = cfg.get_value("game", "frame", frame)
+		if fr is String:
+			frame = Frames.clamp_id(fr)
 	elif err != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d), using defaults" % [PATH, err])
 	# A browser only allows fullscreen from a click, so the web build never restores it at startup.
@@ -70,6 +74,7 @@ func save() -> void:
 	cfg.set_value("video", "bloom", bloom)
 	cfg.set_value("video", "show_fps", show_fps)
 	cfg.set_value("game", "difficulty", difficulty)
+	cfg.set_value("game", "frame", frame)
 	var err := cfg.save(PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [PATH, err])

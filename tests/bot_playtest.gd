@@ -5,7 +5,9 @@ extends Node
 ## "slagged" starts with the three Slagged items, "elite" always takes an Elite door when one is offered,
 ## "forge" starts with Tinder Rounds and 3 Cores so the Anvil can force a Fusion. Between fights the bot shops, rests, gambles
 ## and walks through a random door, so a long run exercises the whole Stratum route.
-## Add "diff=N" anywhere after the seconds (0 COLD .. 4 MELTDOWN, default 1 WARM) to play a difficulty level.
+## Add "diff=N" anywhere after the seconds (0 COLD .. 4 MELTDOWN, default 1 WARM) to play a difficulty level,
+## and "frame=riveter|furnace|arclight" to pick the Frame (default Riveter). The bot fights the way each Frame wants:
+## the Riveter and the Arclight keep their distance, the Furnace walks into melee range.
 
 var game: Node
 var frames := 0
@@ -38,9 +40,13 @@ var room_seen := -1
 
 func _ready() -> void:
 	var args := Array(OS.get_cmdline_user_args())
+	Settings.frame = Frames.DEFAULT # never the Frame saved by the last menu session
 	for a: String in args.duplicate():
 		if a.begins_with("diff="):
 			Settings.difficulty = Difficulty.clamp_level(int(a.substr(5)))
+			args.erase(a)
+		elif a.begins_with("frame="):
+			Settings.frame = Frames.clamp_id(a.substr(6))
 			args.erase(a)
 	if args.size() > 0:
 		max_frames = int(args[0]) * 60
@@ -61,6 +67,8 @@ func _ready() -> void:
 		game.cores = 3 # exercise a Forced Fusion: Cluster Embers without Frag Lattice
 		game.inventory.add("tinder_rounds")
 	for id: String in ItemDB.ITEMS:
+		if not game.inventory.fits(id):
+			continue
 		if (all_items and not ItemDB.is_slagged(id)) or (slagged and ItemDB.is_slagged(id)):
 			game.inventory.add(id)
 
@@ -157,17 +165,30 @@ func _bot(p: Player) -> void:
 	nd = sd
 	var to_e := nearest.global_position - p.global_position
 	p.bot_aim = to_e
-	# Keep ~4 tiles away, strafe, and drift toward the centre to avoid corners.
-	var keep := (6.0 if nearest is Forgewarden else 4.0) * C.TILE
-	var away := -to_e.normalized() if nd < keep else to_e.normalized() * 0.3
 	var strafe := to_e.normalized().orthogonal() * 0.6
 	var home := (centre - p.global_position) / 400.0
-	p.bot_move = away + strafe + home
-	# Heat management: stop firing near the cap if Vent isn't ready.
-	p.bot_fire = not (p.heat.value >= 92.0 and p.vent_cd > 0.0)
+	if p.frame == "furnace":
+		# Walk into the pack and swing; back off a step from a Forgewarden's front.
+		var reach: float = SlagMaul.REACH + nearest.radius
+		var want: float = reach * (0.8 if not nearest is Forgewarden else 0.95)
+		var close_in := to_e.normalized() if nd > want else -to_e.normalized() * 0.4
+		p.bot_move = close_in + strafe * 0.7 + home * 0.5
+		p.bot_fire = nd < reach + 0.6 * C.TILE and not (p.heat.value >= 88.0 and p.vent_cd > 0.0)
+	else:
+		# Keep ~4 tiles away (the Arclight a little more, its beam reaches 7), strafe, drift toward the centre.
+		var keep := (6.0 if nearest is Forgewarden else (4.5 if p.frame == "arclight" else 4.0)) * C.TILE
+		var away := -to_e.normalized() if nd < keep else to_e.normalized() * 0.3
+		p.bot_move = away + strafe + home
+		# Heat management: stop firing near the cap if Vent isn't ready.
+		var cap := 90.0 if p.frame == "arclight" else 92.0
+		p.bot_fire = not (p.heat.value >= cap and p.vent_cd > 0.0)
+		if p.frame == "arclight" and nd > CoilLance.RANGE * 1.1:
+			p.bot_fire = false
 	if p.heat.band == Heat.Band.HOT and p.bot_fire:
 		overdrive_shots += 1
-	if p.vent_cd <= 0.0 and (p.heat.value >= 85.0 or (close >= 4 and p.heat.value >= 40.0)):
+	# The Furnace Vents as soon as it is Hot with enemies close, to keep its Slag Shield up.
+	var furnace_vent := p.frame == "furnace" and p.heat.value >= Player.SLAG_SHIELD_AT and close >= 1 and p.shield <= 0.0
+	if p.vent_cd <= 0.0 and (furnace_vent or p.heat.value >= 85.0 or (close >= 4 and p.heat.value >= 40.0)):
 		p.bot_vent = true
 		if vent_shot_at < frames:
 			vent_shot_at = frames + 5
@@ -175,7 +196,14 @@ func _bot(p: Player) -> void:
 		p.bot_move = Vector2.ZERO
 		p.bot_vent = false
 		return
-	if threat != null and p.dash_charges > 0 and p.dash_time <= 0.0:
+	# The Furnace answers a Clinker's windup by smashing it first when it is in reach.
+	if threat != null and p.frame == "furnace" and threat is Clinker and p.global_position.distance_to(threat.global_position) < SlagMaul.REACH + threat.radius and not p.heat.is_overheated():
+		p.bot_aim = threat.global_position - p.global_position
+		p.bot_fire = true
+		threat = null
+	# In melee range of a Forgewarden the Furnace keeps one dash for its Hammerfall ring.
+	var reserve := 1 if p.frame == "furnace" and enemies.any(func(e: Node) -> bool: return e is Forgewarden) else 0
+	if threat != null and p.dash_charges > reserve and p.dash_time <= 0.0:
 		p.bot_move = (p.global_position - threat.global_position).normalized().orthogonal()
 		p.bot_dash = true
 
@@ -330,13 +358,18 @@ func _report(p: Player) -> void:
 	if times.size() > 0:
 		avg /= times.size()
 	print("=== BOT PLAYTEST ===")
-	print("difficulty: %s" % Difficulty.level_name())
+	print("frame: %s  difficulty: %s" % [p.frame, Difficulty.level_name()])
 	print("sim time: %.1fs  died: %s" % [frames / 60.0, game.dead])
 	print("rooms cleared: %d  current room: %d" % [times.size(), game.run.index])
 	print("clear times: %s" % str(times.map(func(t: float) -> String: return "%.1f" % t)))
 	print("avg clear: %.1fs" % avg)
 	print("kills: %d  pips left: %d/%d" % [game.kills, p.pips, p.max_pips])
-	print("shots: %d  vents: %d  overheats: %d  reached Hot: %s" % [p.shots_fired, p.vents, p.heat.overheat_count, min_heat_seen_hot])
+	var attacks := p.shots_fired
+	if p.maul != null:
+		attacks = p.maul.swings
+	elif p.lance != null:
+		attacks = p.lance.ticks
+	print("attacks: %d  vents: %d  overheats: %d  reached Hot: %s  shields used: %d" % [attacks, p.vents, p.heat.overheat_count, min_heat_seen_hot, p.shields_used])
 	print("hit-stop frames total: %d" % Juice.total_hitstop_frames)
 	print("picks: %d  items: %s" % [picks, str(game.inventory.owned)])
 	print("fusions: %s" % str(game.inventory.fusions))
@@ -351,7 +384,7 @@ func _report(p: Player) -> void:
 		print("ledger: %s" % str(game.ledger_lines()))
 	var left := get_tree().get_nodes_in_group("enemies")
 	if not left.is_empty():
-		print("enemies left: %d  first at %s  player at %s  pending portals: %d" % [left.size(), str(left[0].global_position), str(p.global_position), game.director.pending])
+		print("enemies left: %d (%s)  first at %s  player at %s  pending portals: %d" % [left.size(), left[0].source_name, str(left[0].global_position), str(p.global_position), game.director.pending])
 
 
 ## One screenshot per room type (shortly after entering), plus the first open doors.
