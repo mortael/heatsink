@@ -124,6 +124,15 @@ func _swing() -> void:
 	player.muzzle = 0.08
 
 
+## Where the maul head points right now: along the swing while one shows, else NAN.
+func head_angle() -> float:
+	if _show <= 0.0:
+		return NAN
+	var a0 := _show_dir.angle() - ARC * 0.5
+	var prog := 1.0 - _show / SWING_SHOW
+	return lerpf(a0, a0 + ARC, prog) if _show_idx != 1 else lerpf(a0 + ARC, a0, prog)
+
+
 func _draw() -> void:
 	if _show <= 0.0:
 		return

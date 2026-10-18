@@ -27,6 +27,8 @@ var picker: Picker
 var pause_menu: PauseMenu
 var touch: TouchControls
 var run: RunMap
+var ambience: Ambience
+var street_layout := -1 # tests: force this Rainside layout instead of a random one
 
 var dead := false
 var victory := false
@@ -61,7 +63,8 @@ func _ready() -> void:
 	inventory.absolved.connect(_on_absolved)
 	world = Node2D.new()
 	add_child(world)
-	add_child(Ambience.new())
+	ambience = Ambience.new()
+	add_child(ambience)
 	add_child(Bloom.new())
 	fx = Fx.new()
 	fx.z_index = 6
@@ -131,7 +134,16 @@ func _build_room(kind: String) -> void:
 	room_kind = kind
 	run.enter(kind)
 	took_damage_this_room = false
-	room = Room.new(_pick_layout(kind))
+	if kind == "street":
+		var street := StreetRoom.new(street_layout if street_layout >= 0 else randi() % StreetData.LAYOUTS.size())
+		street.focus = player
+		room = street
+	else:
+		room = Room.new(_pick_layout(kind))
+	ambience.night = kind == "street"
+	Upright.on = kind == "street"
+	world.y_sort_enabled = Upright.on
+	ambience.apply_lights()
 	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
 	world.add_child(room)
 	world.move_child(room, 0)
@@ -257,7 +269,7 @@ func on_room_cleared(time: float) -> void:
 
 func _give_reward() -> void:
 	match room_kind:
-		"combat_item":
+		"combat_item", "street":
 			_open_picker("reward", inventory.offer(3), "CHOOSE A SALVAGE")
 		"combat_conductor":
 			var conductors := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword == "conductor"

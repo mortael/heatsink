@@ -111,6 +111,7 @@ func _nearest_ignited() -> Enemy:
 
 
 func _draw() -> void:
+	Upright.bolt(self, 3.0)
 	if flare:
 		var pulse := 0.75 + 0.25 * sin(age * 30.0)
 		Glow.halo(self, Vector2.ZERO, 26.0 * pulse, Color(1, 0.5, 0.1, 0.7))

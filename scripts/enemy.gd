@@ -44,7 +44,7 @@ func _ready() -> void:
 	cs.shape = sh
 	add_child(cs)
 	add_to_group("enemies")
-	z_index = 2
+	z_index = 3 if Upright.on else 2 # 2.5D: same layer as the Sink, so the world's y-sort decides who stands in front
 
 
 func _physics_process(delta: float) -> void:
@@ -202,6 +202,20 @@ func _separation() -> Vector2:
 		if l < reach and l > 0.01:
 			push += d / l * (1.0 - l / reach)
 	return push
+
+
+## Rainside: the enemy as a standing sprite with its hit flash and Ignite glow at its feet.
+## Returns false in flat rooms, where the caller draws its own art.
+func draw_figure(fig: String, face: Vector2, pose := 0, lift := 0.0) -> bool:
+	if not Upright.on:
+		return false
+	Upright.figure(self, fig, radius, face, velocity.length() > 20.0, pose, Upright.flash(flash_frames, flash_crit), lift)
+	if ignite_stacks > 0:
+		var k := clampf(ignite_stacks / 10.0, 0.2, 1.0)
+		draw_set_transform(Upright.feet(radius), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 20, Color(1, 0.5, 0.12, 0.5 + 0.4 * k), 2.0 + 2.0 * k)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
 
 
 ## White flash: full for 1 frame, 50% for the next 2.

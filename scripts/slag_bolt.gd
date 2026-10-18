@@ -36,6 +36,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _draw() -> void:
+	Upright.bolt(self, 5.0)
 	draw_circle(Vector2.ZERO, RADIUS + 5.0, Color(C.TELE_LINE, 0.18))
 	draw_line(Vector2.ZERO, -vel.normalized() * 16.0, Color(1, 0.55, 0.2, 0.45), RADIUS)
 	draw_circle(Vector2.ZERO, RADIUS, Color(1.0, 0.55, 0.18))

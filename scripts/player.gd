@@ -420,19 +420,45 @@ func _draw() -> void:
 	# Hot glow
 	if heat.band == Heat.Band.HOT:
 		draw_circle(Vector2.ZERO, RADIUS + 9.0, Color(1, 0.6, 0.2, 0.18 * a))
-	match frame:
-		"furnace": _draw_furnace(a, core)
-		"arclight": _draw_arclight(a, core)
-		_: _draw_riveter(a, core)
+	var body := Vector2.ZERO
+	if Upright.on:
+		_draw_figure(a)
+		body = Vector2(0, -Upright.BOLT_LIFT)
+	else:
+		match frame:
+			"furnace": _draw_furnace(a, core)
+			"arclight": _draw_arclight(a, core)
+			_: _draw_riveter(a, core)
 	if shield > 0.0:
 		var blink := shield > 1.0 or int(shield * 10.0) % 2 == 0
 		if blink:
 			var pts := PackedVector2Array()
 			for i in 7:
-				pts.append(Vector2.from_angle(i * TAU / 6.0 + PI / 6.0) * (RADIUS + 9.0))
+				pts.append(body + Vector2.from_angle(i * TAU / 6.0 + PI / 6.0) * (RADIUS + 9.0))
 			draw_polyline(pts, Color(1, 0.75, 0.3, 0.9 * a), 3.0)
 			draw_colored_polygon(pts.slice(0, 6), Color(1, 0.6, 0.2, 0.15 * a))
 	_draw_vent_ring(a)
+
+
+## Rainside: the Sink as a standing sprite with its weapon in hand, turned to the aim.
+## Aiming up, the weapon is behind the body; the bolts leave its muzzle at BOLT_LIFT.
+func _draw_figure(a: float) -> void:
+	var gun := {"furnace": "slag_maul", "arclight": "coil_gun"}.get(frame, "rivet_gun") as String
+	var angle := aim_dir.angle()
+	var swing := maul.head_angle() if maul != null else NAN
+	if not is_nan(swing):
+		angle = swing
+	var hand := Vector2(0, -Upright.BOLT_LIFT) + Vector2.from_angle(angle) * 4.0
+	var mod := Color(1, 1, 1, a)
+	var behind := sin(angle) < -0.3
+	if behind:
+		Upright.weapon(self, gun, hand, angle, mod)
+	var moving := velocity.length() > 20.0
+	Upright.figure(self, "sink_" + frame if FigureData.FIGURES.has("sink_" + frame) else "sink_riveter", RADIUS, aim_dir, moving, 1 if not is_nan(swing) else 0, mod)
+	if not behind:
+		Upright.weapon(self, gun, hand, angle, mod)
+	if muzzle > 0.0 and frame != "furnace":
+		draw_circle(hand + aim_dir * 18.0, 5.0, Color(0.8, 1.0, 1.0, a) if frame == "arclight" else Color(1, 0.9, 0.6, a))
 
 
 func _draw_riveter(a: float, core: Color) -> void:

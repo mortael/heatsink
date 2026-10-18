@@ -91,6 +91,8 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, tip, Color(C.TELE_MELEE, a), 2.0)
 		var side := facing.orthogonal() * 8.0
 		draw_colored_polygon(PackedVector2Array([tip + facing * 12.0, tip + side, tip - side]), Color(C.TELE_MELEE, a))
+	if draw_figure("sparkhound", facing, 1 if state == S.RUSH else 0):
+		return
 	var stretch := 1.0
 	if state == S.RUSH:
 		stretch = 1.45

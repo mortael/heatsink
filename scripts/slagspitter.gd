@@ -126,6 +126,8 @@ func _draw() -> void:
 			for i in segs:
 				if i % 2 == 0:
 					draw_line(d * (radius + LANE_LEN * i / segs), d * (radius + LANE_LEN * (i + 1) / segs), Color(C.TELE_LINE, a), 2.0)
+	if draw_figure("slagspitter", aim, 1 if state == S.AIM or state == S.RECOIL else 0):
+		return
 	var lift := sin(bob) * 1.5
 	var squash := 1.0
 	if state == S.AIM:

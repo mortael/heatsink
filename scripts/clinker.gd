@@ -82,6 +82,8 @@ func _chase_target(p: Vector2) -> Vector2:
 
 
 func _draw() -> void:
+	if draw_figure("clinker", facing, 1 if state == S.WINDUP or state == S.LUNGE else 0):
+		return
 	var sx := 1.0
 	var sy := 1.0 + sin(wobble) * 0.04
 	var glow := 0.0

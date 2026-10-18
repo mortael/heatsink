@@ -119,6 +119,7 @@ func light_color() -> Color:
 
 
 func _draw() -> void:
+	Upright.bolt(self)
 	var hot := overdrive or ricocheted
 	var col := light_color()
 	var length := minf(_travel, 90.0 if hot else 64.0)
