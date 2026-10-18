@@ -91,13 +91,14 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, tip, Color(C.TELE_MELEE, a), 2.0)
 		var side := facing.orthogonal() * 8.0
 		draw_colored_polygon(PackedVector2Array([tip + facing * 12.0, tip + side, tip - side]), Color(C.TELE_MELEE, a))
+	if draw_figure("sparkhound", facing, 1 if state == S.RUSH else 0):
+		return
 	var stretch := 1.0
 	if state == S.RUSH:
 		stretch = 1.45
 	elif state == S.AIM:
 		stretch = 0.8
-	Upright.body(self, radius * 0.8, radius * 0.6, Color(0.3, 0.24, 0.2), 0)
-	Upright.xf(self, Vector2.ZERO, facing.angle(), Vector2(stretch, 1.0 / sqrt(stretch)))
+	draw_set_transform(Vector2.ZERO, facing.angle(), Vector2(stretch, 1.0 / sqrt(stretch)))
 	var body := flash_color(Color(0.3, 0.24, 0.2))
 	# Long low body, a wedge head and four flicking legs.
 	var step := sin(gait) * 4.0 if state == S.CHASE else 0.0
@@ -109,6 +110,6 @@ func _draw() -> void:
 	draw_circle(Vector2(radius * 0.55, 0), 2.5, flash_color(eye))
 	# Spark tail
 	draw_line(Vector2(-radius - 4, 0), Vector2(-radius - 12, sin(gait * 0.5) * 3.0), Color(1, 0.75, 0.3, 0.8), 2.0)
-	Upright.xf(self)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rivets(radius)
 	draw_status(radius)

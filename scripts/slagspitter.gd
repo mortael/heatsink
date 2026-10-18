@@ -126,23 +126,24 @@ func _draw() -> void:
 			for i in segs:
 				if i % 2 == 0:
 					draw_line(d * (radius + LANE_LEN * i / segs), d * (radius + LANE_LEN * (i + 1) / segs), Color(C.TELE_LINE, a), 2.0)
+	if draw_figure("slagspitter", aim, 1 if state == S.AIM or state == S.RECOIL else 0):
+		return
 	var lift := sin(bob) * 1.5
 	var squash := 1.0
 	if state == S.AIM:
 		squash = 1.0 - 0.15 * (1.0 - t / AIM)
 	elif state == S.RECOIL:
 		squash = 1.15
-	Upright.body(self, radius, radius * 0.8, Color(0.34, 0.3, 0.3), 3)
 	# Three stubby legs under a round crucible with a glowing spout toward the player.
 	for i in 3:
 		var a2 := TAU * i / 3.0 + 0.5
 		draw_line(Vector2.ZERO, Vector2.from_angle(a2) * (radius + 6.0), Color(0.45, 0.4, 0.36), 3.0)
 	var body := flash_color(Color(0.34, 0.3, 0.3))
-	Upright.xf(self, Vector2(0, lift), 0.0, Vector2(1.0, squash))
+	draw_set_transform(Vector2(0, lift), 0.0, Vector2(1.0, squash))
 	draw_circle(Vector2.ZERO, radius, body)
 	draw_arc(Vector2.ZERO, radius, 0, TAU, 20, flash_color(Color(0.6, 0.5, 0.45)), 2.0)
 	draw_circle(Vector2.ZERO, radius * 0.5, Color(1.0, 0.5, 0.15, 0.8 if state == S.AIM else 0.5))
-	Upright.xf(self)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var spout := aim * (radius + 5.0)
 	draw_line(aim * radius * 0.5, spout, flash_color(Color(0.55, 0.5, 0.46)), 7.0)
 	draw_circle(spout, 3.5, C.TELE_LINE if state == S.AIM else Color(1, 0.55, 0.2))

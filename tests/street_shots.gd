@@ -74,6 +74,7 @@ func _process(_delta: float) -> void:
 			p.heat.value = 40.0
 		50:
 			_shot(name_ + "_fight")
+			_zoom(name_ + "_zoom", Rect2(p.global_position + Vector2(-3, -4) * C.TILE, Vector2(15, 7) * C.TILE))
 			p.bot_fire = false
 		70:
 			p.position = _behind_prop()
@@ -97,4 +98,14 @@ func _behind_prop() -> Vector2:
 
 func _shot(name_: String) -> void:
 	var img := get_viewport().get_texture().get_image()
+	img.save_png("%s/%s.png" % [shot_dir, name_])
+
+
+## A close-up of a world rectangle, doubled, to judge the figures.
+func _zoom(name_: String, area: Rect2) -> void:
+	var img := get_viewport().get_texture().get_image()
+	var xf := get_viewport().get_canvas_transform()
+	var r := Rect2i(Rect2(xf * area.position, xf.basis_xform(area.size))).intersection(Rect2i(Vector2i.ZERO, img.get_size()))
+	img = img.get_region(r)
+	img.resize(r.size.x * 2, r.size.y * 2, Image.INTERPOLATE_LANCZOS)
 	img.save_png("%s/%s.png" % [shot_dir, name_])

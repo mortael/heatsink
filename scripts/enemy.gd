@@ -204,6 +204,20 @@ func _separation() -> Vector2:
 	return push
 
 
+## Rainside: the enemy as a standing sprite with its hit flash and Ignite glow at its feet.
+## Returns false in flat rooms, where the caller draws its own art.
+func draw_figure(fig: String, face: Vector2, pose := 0, lift := 0.0) -> bool:
+	if not Upright.on:
+		return false
+	Upright.figure(self, fig, radius, face, velocity.length() > 20.0, pose, Upright.flash(flash_frames, flash_crit), lift)
+	if ignite_stacks > 0:
+		var k := clampf(ignite_stacks / 10.0, 0.2, 1.0)
+		draw_set_transform(Upright.feet(radius), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 20, Color(1, 0.5, 0.12, 0.5 + 0.4 * k), 2.0 + 2.0 * k)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
+
+
 ## White flash: full for 1 frame, 50% for the next 2.
 func flash_color(base: Color) -> Color:
 	if flash_frames <= 0:

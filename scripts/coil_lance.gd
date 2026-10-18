@@ -156,6 +156,8 @@ func _zap(targets: Array) -> void:
 
 
 func _draw() -> void:
+	if Upright.on: # from the coil gun in the Sink's hands, at chest height
+		draw_set_transform(Vector2(0, -Upright.BOLT_LIFT))
 	if beams.is_empty():
 		return
 	var hot := player.heat.band == Heat.Band.HOT

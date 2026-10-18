@@ -280,8 +280,11 @@ func _draw() -> void:
 				pts.append(facing.rotated(-CONE_HALF + i * CONE_HALF / 4.0) * CONE_REACH)
 			draw_colored_polygon(pts, Color(1, 0.45, 0.1, 0.22 + 0.06 * sin(Time.get_ticks_msec() / 40.0)))
 	var lift := -14.0 * sin(PI * (1.0 - maxf(t, 0.0) / LEAP_TIME)) if state == S.LEAP else 0.0
-	Upright.body(self, radius, radius * 0.9, Color(0.3, 0.27, 0.27))
-	Upright.xf(self, Vector2(0, lift), facing.angle(), Vector2.ONE)
+	if draw_figure("forgewarden", facing, 1 if state == S.RAISE or state == S.LEAP else 0, lift * 2.0):
+		_draw_plates_on_floor()
+		_draw_health_bar(radius * Upright.FEET - 82.0 + lift * 2.0)
+		return
+	draw_set_transform(Vector2(0, lift), facing.angle(), Vector2.ONE)
 	var r := radius
 	# Bellows on the back
 	var swell := 0.0
@@ -308,10 +311,23 @@ func _draw() -> void:
 		hammer = Vector2(-r * 0.2 - 10.0 * (1.0 - t / RAISE), r * 0.4)
 	draw_line(Vector2(0, r * 0.6), hammer, Color(0.5, 0.4, 0.3), 4.0)
 	draw_rect(Rect2(hammer - Vector2(9, 7), Vector2(18, 14)), flash_color(Color(0.6, 0.6, 0.65)))
-	Upright.xf(self)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rivets(r)
 	draw_status(r)
-	# Health bar
+	_draw_health_bar(-r - 16.0)
+
+
+func _draw_health_bar(y: float) -> void:
 	var w := 64.0
-	draw_rect(Rect2(-w * 0.5, -r - 16, w, 5), Color(0, 0, 0, 0.7))
-	draw_rect(Rect2(-w * 0.5, -r - 16, w * maxf(hp, 0.0) / max_hp, 5), Color(1, 0.35, 0.25))
+	draw_rect(Rect2(-w * 0.5, y, w, 5), Color(0, 0, 0, 0.7))
+	draw_rect(Rect2(-w * 0.5, y, w * maxf(hp, 0.0) / max_hp, 5), Color(1, 0.35, 0.25))
+
+
+## Rainside: the front plates as a ring on the floor around the feet, so which side is armoured still reads.
+func _draw_plates_on_floor() -> void:
+	draw_set_transform(Upright.feet(radius), 0.0, Vector2(1.0, 0.45))
+	for i in PLATES:
+		var a0 := facing.angle() - PI / 3.0 + i * (2.0 * PI / 9.0)
+		var col := Color(0.78, 0.8, 0.84) if i < plates else Color(0.25, 0.2, 0.2, 0.6)
+		draw_arc(Vector2.ZERO, radius + 6.0, a0 + 0.04, a0 + 2.0 * PI / 9.0 - 0.04, 6, col, 5.0 if i < plates else 2.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

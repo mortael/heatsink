@@ -246,6 +246,7 @@ func _draw_beam() -> void:
 	if tether == T.IDLE or partner == null or not is_instance_valid(partner):
 		return
 	var to := partner.global_position - global_position
+	_beam_fx.draw_set_transform(Vector2(0, -Upright.BOLT_LIFT) if Upright.on else Vector2.ZERO)
 	if tether == T.AIM:
 		# A faint violet charge-up along the dotted telegraph line.
 		var k := 1.0 - tether_t / TETHER_AIM
@@ -271,7 +272,14 @@ func _draw() -> void:
 				if i % 2 == 0:
 					draw_line(to * (float(i) / segs), to * (float(i + 1) / segs), Color(C.TELE_STATE, 0.85), 2.0)
 		# The live beam is drawn by _draw_beam on the additive layer.
-	Upright.body(self, radius * 0.7, radius * 1.3, Color(0.3, 0.33, 0.4))
+	if Upright.on:
+		var face := velocity
+		if face.length() < 20.0:
+			var partnered := tether != T.IDLE and partner != null and is_instance_valid(partner)
+			face = (partner.global_position if partnered else game.player.global_position) - global_position
+		var pose := 1 if tether == T.BEAM else (2 if tether == T.AIM or state == S.CROUCH else 0)
+		draw_figure("linesman", face, pose, -10.0 if state == S.HOP else 0.0)
+		return
 	var squash := 1.0
 	var lift := sin(bob) * 2.0
 	if state == S.CROUCH:
