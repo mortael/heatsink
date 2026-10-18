@@ -13,6 +13,8 @@ var solid: Array = [] # solid[y][x] -> bool
 var rects: Array[Rect2] = []
 var size_px := Vector2(C.ROOM_W * C.TILE, C.ROOM_H * C.TILE)
 var accent := Color(0.9, 0.4, 0.1)
+var occluders := true # walls throw light shadows (StreetRoom turns this off: its props stand up instead)
+var door_row := 1 # tile row the player walks into to take a door (StreetRoom moves it down to its facade)
 var _rim: Node2D # wall faces turned towards a bolt light catch its glow
 var _rim_lights: Array = [] # [local pos, colour] per lit bolt this frame
 var _rim_drawn := false
@@ -74,7 +76,7 @@ func _process(_delta: float) -> void:
 func is_valid() -> bool:
 	var reach := _flood(ENTRY_TILE)
 	for dx: int in DOOR_TILES:
-		if not reach.has(Vector2i(dx, 1)) or not reach.has(Vector2i(dx - 1, 1)):
+		if not reach.has(Vector2i(dx, door_row)) or not reach.has(Vector2i(dx - 1, door_row)):
 			return false
 	return true
 
@@ -89,7 +91,7 @@ func entry_point() -> Vector2:
 
 ## Where the player stands to walk through door slot i.
 func door_point(slot: int) -> Vector2:
-	return Vector2(DOOR_TILES[slot] * C.TILE, 1.0 * C.TILE)
+	return Vector2(DOOR_TILES[slot] * C.TILE, door_row * C.TILE)
 
 
 func tile_open(tile: Vector2i) -> bool:
@@ -183,6 +185,8 @@ func _solid(r: Rect2) -> void:
 	b.add_child(cs)
 	add_child(b)
 	# Walls block light, so Vents and slams throw shadows behind them.
+	if not occluders:
+		return
 	var occ := LightOccluder2D.new()
 	var poly := OccluderPolygon2D.new()
 	poly.polygon = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])

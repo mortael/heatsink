@@ -341,6 +341,8 @@ static func _route() -> String:
 	t += "[/ul]\n"
 	t += _h("Elite doors", RunMap.KINDS.elite.color)
 	t += "A red double frame. Inside waits a Forgewarden with Clinkers (and sometimes a Linesman), plus a second wave. The reward is 1 Core and a pick of 3 Rare-or-better items, each with a 20% chance to be Slagged. Every Stratum offers at least two, but never as the only door, so there is always a safer way.\n\n"
+	t += _h("Rainside", RunMap.KINDS.street.color)
+	t += "A night street in the rain, seen at an angle: buildings, cars, trees and lamps stand up out of the floor, and tall things hide what is behind them until you walk under them. The fight and the reward are a Salvage room's. One Rainside door per Stratum, usually by room %d.\n\n" % RunMap.STREET_DUE
 	t += _h("The Foundry Gate", RunMap.KINDS.gate.color)
 	t += "The last fight of the Stratum: three waves, ending with a Forgewarden and a Linesman. Clear it and the Stratum is yours."
 	return t

@@ -12,16 +12,22 @@ extends RefCounted
 ## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run;
 ## - an Elite door (red frame) is offered at least twice per Stratum, never as the only door,
 ##   so the safe route always exists. Harder difficulty levels offer Elite doors more often.
+## - one Rainside door (a 2.5D street fight) per Stratum, between rooms 2 and 9, at the latest by room 6.
 
 const ROOMS := 12
 const GATE := ROOMS + 1
 const ELITE_FIRST := 3 # earliest room an Elite door can lead to
 const ELITE_LAST := 11
+const STREET_FIRST := 2
+const STREET_DUE := 6 # the Rainside door is always on offer by this room
+const STREET_LAST := 9
+const STREET_CHANCE := 0.3
 
 const KINDS := {
 	"combat_item": {"name": "SALVAGE", "sub": "combat · pick 1 of 3 items", "color": Color(1.0, 0.6, 0.25), "combat": true},
 	"combat_conductor": {"name": "CONDUCTOR", "sub": "combat · pick 1 of 3 Conductors", "color": Color(0.72, 0.78, 0.85), "combat": true},
 	"elite": {"name": "ELITE", "sub": "Forgewarden · 1 Core + Rare pick", "color": Color(1.0, 0.22, 0.2), "combat": true},
+	"street": {"name": "RAINSIDE", "sub": "2.5D street fight · pick 1 of 3 items", "color": Color(1.0, 0.4, 0.62), "combat": true},
 	"combat_scrap": {"name": "SCRAP CACHE", "sub": "combat · +25 Scrap", "color": Color(0.9, 0.78, 0.45), "combat": true},
 	"shop": {"name": "SCRAPPER", "sub": "shop · no enemies", "color": Color(1.0, 0.85, 0.3), "combat": false},
 	"vault": {"name": "COOLING VAULT", "sub": "rest · no enemies", "color": Color(0.45, 0.8, 1.0), "combat": false},
@@ -37,6 +43,7 @@ var extra_vault := false
 var elite_offers := 0
 var elite_min := 2
 var elite_chance := 0.25
+var street_offered := false
 var _used := {} # non-combat types already taken this Stratum
 
 
@@ -96,6 +103,11 @@ func _roll_exits() -> Array[String]:
 		count = mini(3, maxi(count, out.size() + 2))
 		out.append("elite")
 		elite_offers += 1
+	if not street_offered and next >= STREET_FIRST and next <= STREET_LAST and (next >= STREET_DUE or rng.randf() < STREET_CHANCE):
+		count = mini(3, maxi(count, out.size() + 1))
+		if out.size() < count:
+			out.append("street")
+			street_offered = true
 	while out.size() < count:
 		if not specials.is_empty() and rng.randf() < 0.35:
 			var s: String = specials[rng.randi_range(0, specials.size() - 1)]
