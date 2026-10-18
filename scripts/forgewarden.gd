@@ -280,7 +280,8 @@ func _draw() -> void:
 				pts.append(facing.rotated(-CONE_HALF + i * CONE_HALF / 4.0) * CONE_REACH)
 			draw_colored_polygon(pts, Color(1, 0.45, 0.1, 0.22 + 0.06 * sin(Time.get_ticks_msec() / 40.0)))
 	var lift := -14.0 * sin(PI * (1.0 - maxf(t, 0.0) / LEAP_TIME)) if state == S.LEAP else 0.0
-	draw_set_transform(Vector2(0, lift), facing.angle(), Vector2.ONE)
+	Upright.body(self, radius, radius * 0.9, Color(0.3, 0.27, 0.27))
+	Upright.xf(self, Vector2(0, lift), facing.angle(), Vector2.ONE)
 	var r := radius
 	# Bellows on the back
 	var swell := 0.0
@@ -307,7 +308,7 @@ func _draw() -> void:
 		hammer = Vector2(-r * 0.2 - 10.0 * (1.0 - t / RAISE), r * 0.4)
 	draw_line(Vector2(0, r * 0.6), hammer, Color(0.5, 0.4, 0.3), 4.0)
 	draw_rect(Rect2(hammer - Vector2(9, 7), Vector2(18, 14)), flash_color(Color(0.6, 0.6, 0.65)))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	Upright.xf(self)
 	draw_rivets(r)
 	draw_status(r)
 	# Health bar

@@ -94,7 +94,8 @@ func _draw() -> void:
 		sx = 0.85
 		sy = 1.2
 		glow = 1.0
-	draw_set_transform(Vector2.ZERO, facing.angle(), Vector2(sy, sx))
+	Upright.body(self, radius, radius * 0.9, Color(0.38, 0.28, 0.23))
+	Upright.xf(self, Vector2.ZERO, facing.angle(), Vector2(sy, sx))
 	if glow > 0.0:
 		draw_circle(Vector2.ZERO, radius + 8.0 * glow, Color(C.TELE_MELEE, 0.22 * glow))
 	var body := flash_color(Color(0.38, 0.28, 0.23))
@@ -103,6 +104,6 @@ func _draw() -> void:
 	# Mouth crack on the facing side
 	var mouth := Color(0.85, 0.4, 0.12).lerp(Color(1.0, 0.85, 0.4), glow)
 	draw_arc(Vector2(radius * 0.35, 0), radius * 0.55, -0.9, 0.9, 8, flash_color(mouth), 2.5 + 2.0 * glow)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	Upright.xf(self)
 	draw_rivets(radius)
 	draw_status(radius)

@@ -56,9 +56,12 @@ func _process(_delta: float) -> void:
 			game._open_doors()
 			p.bot = true
 			p.position = Vector2(7.5, 8.5) * C.TILE
-			for off in [Vector2(5, -1.5), Vector2(6.5, 0.5), Vector2(8, -2.5), Vector2(9.5, 1.0)]:
-				var at: Vector2 = game.room.random_open_point() if not game.room.is_open(p.position + off * C.TILE) else p.position + off * C.TILE
-				var e := Clinker.new()
+			var kinds := [Clinker, Sparkhound, Slagspitter, SlagMortar, Linesman, Forgewarden, Clinker]
+			var offs := [Vector2(5, -1.5), Vector2(6.5, 0.5), Vector2(8, -2.5), Vector2(10.5, 1.0), Vector2(3, 2.0), Vector2(11, -3.0), Vector2(2.5, -2.0)]
+			for i in kinds.size():
+				var off: Vector2 = offs[i]
+				var at: Vector2 = game.room.random_open_point() if not game.room.is_open(p.position + off * C.TILE, 30.0) else p.position + off * C.TILE
+				var e: Enemy = kinds[i].new()
 				e.game = game
 				e.max_hp = 4000.0
 				e.position = at

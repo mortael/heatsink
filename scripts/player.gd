@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## The Sink. Verbs: move, attack, dash, vent (GDD sections 2-3). The Frame picks the attack:
 ## the Riveter's Rivet Gun lives here, the Furnace swings a SlagMaul and the Arclight channels a CoilLance.
 
+const HULLS := {"riveter": Color(0.3, 0.32, 0.35), "furnace": Color(0.36, 0.3, 0.27), "arclight": Color(0.26, 0.31, 0.37)} # body colour in 2.5D rooms
 const SPEED := 6.0 * C.TILE
 const ACCEL_TIME := 0.08
 const DECEL_TIME := 0.05
@@ -420,6 +421,7 @@ func _draw() -> void:
 	# Hot glow
 	if heat.band == Heat.Band.HOT:
 		draw_circle(Vector2.ZERO, RADIUS + 9.0, Color(1, 0.6, 0.2, 0.18 * a))
+	Upright.body(self, RADIUS, 16.0, HULLS.get(frame, HULLS.riveter))
 	match frame:
 		"furnace": _draw_furnace(a, core)
 		"arclight": _draw_arclight(a, core)
@@ -432,6 +434,7 @@ func _draw() -> void:
 				pts.append(Vector2.from_angle(i * TAU / 6.0 + PI / 6.0) * (RADIUS + 9.0))
 			draw_polyline(pts, Color(1, 0.75, 0.3, 0.9 * a), 3.0)
 			draw_colored_polygon(pts.slice(0, 6), Color(1, 0.6, 0.2, 0.15 * a))
+	Upright.ground(self)
 	_draw_vent_ring(a)
 
 

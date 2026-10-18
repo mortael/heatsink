@@ -44,7 +44,7 @@ func _ready() -> void:
 	cs.shape = sh
 	add_child(cs)
 	add_to_group("enemies")
-	z_index = 2
+	z_index = 3 if Upright.on else 2 # 2.5D: same layer as the Sink, so the world's y-sort decides who stands in front
 
 
 func _physics_process(delta: float) -> void:

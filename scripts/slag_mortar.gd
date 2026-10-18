@@ -71,6 +71,7 @@ func _pick_spot() -> Vector2:
 
 func _draw() -> void:
 	var body := flash_color(Color(0.3, 0.27, 0.25))
+	Upright.body(self, radius, radius * 0.7, Color(0.3, 0.27, 0.25))
 	# Tracks
 	draw_rect(Rect2(-radius - 3, -radius, 6, radius * 2.0), Color(0.2, 0.19, 0.18))
 	draw_rect(Rect2(radius - 3, -radius, 6, radius * 2.0), Color(0.2, 0.19, 0.18))

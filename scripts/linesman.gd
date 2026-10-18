@@ -271,6 +271,7 @@ func _draw() -> void:
 				if i % 2 == 0:
 					draw_line(to * (float(i) / segs), to * (float(i + 1) / segs), Color(C.TELE_STATE, 0.85), 2.0)
 		# The live beam is drawn by _draw_beam on the additive layer.
+	Upright.body(self, radius * 0.7, radius * 1.3, Color(0.3, 0.33, 0.4))
 	var squash := 1.0
 	var lift := sin(bob) * 2.0
 	if state == S.CROUCH:

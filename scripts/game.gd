@@ -141,6 +141,8 @@ func _build_room(kind: String) -> void:
 	else:
 		room = Room.new(_pick_layout(kind))
 	ambience.night = kind == "street"
+	Upright.on = kind == "street"
+	world.y_sort_enabled = Upright.on
 	ambience.apply_lights()
 	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
 	world.add_child(room)
