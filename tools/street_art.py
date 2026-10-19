@@ -1001,9 +1001,9 @@ def backdrops():
 	"""Every backdrop to paint: variant 0 of each style keeps its template's ground."""
 	out = []
 	templates = {lay["style"]: lay for lay in LAYOUTS}
-	for style in STYLES:
+	for si, style in enumerate(STYLES):
 		for v in range(VARIANTS):
-			rng = np.random.default_rng(1000 + 17 * v + len(style))
+			rng = np.random.default_rng(1000 + 17 * v + 101 * si)
 			lay = templates[style]
 			if v == 0:
 				ground_ = (lay["ground"], lay["lanes"], lay["spills"], lay.get("drains", []))

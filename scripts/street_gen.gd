@@ -20,7 +20,11 @@ static func generate(rng: RandomNumberGenerator) -> Dictionary:
 	if rng.randf() < TEMPLATE_CHANCE:
 		var t: Dictionary = StreetData.TEMPLATES[rng.randi_range(0, StreetData.TEMPLATES.size() - 1)]
 		return layout(t.lines, t.backdrop, rng.randi())
+	var fell_back := RoomGen.fallbacks
 	var lines := RoomGen.generate(rng, 0.8, AREA)
+	if RoomGen.fallbacks > fell_back: # its fallback is a flat room's layout: use a hand-made yard instead
+		var t: Dictionary = StreetData.TEMPLATES[0]
+		return layout(t.lines, t.backdrop, rng.randi())
 	for y in range(1, HALL_ROWS):
 		lines[y] = "#".repeat(C.ROOM_W)
 	return layout(_dress(lines, rng.randi()), backdrop, rng.randi())
@@ -42,9 +46,9 @@ static func layout(lines: Array, backdrop: int, salt: int) -> Dictionary:
 			elif ch in StreetData.WIDE:
 				n = 2
 			elif ch == "h":
-				while x + n < C.ROOM_W and lines[y][x + n] == "h":
+				while x + n < C.ROOM_W and n < 6 and lines[y][x + n] == "h": # longer runs are two barriers
 					n += 1
-				key = "h%d" % mini(n, 6)
+				key = "h%d" % n
 			for i in n:
 				seen[Vector2i(x + i, y)] = true
 			var variants: Array = StreetData.PROPS[key]
@@ -65,6 +69,7 @@ static func _dress(lines: Array[String], salt: int) -> Array[String]:
 		g.append(row.split(""))
 	var free := func(x: int, y: int) -> bool: return AREA.has_point(Vector2i(x, y)) and g[y][x] == "#"
 	var singles: Array[Vector2i] = []
+	var pairs: Array[Vector2i] = []
 	for y in range(AREA.position.y, AREA.end.y):
 		var x := AREA.position.x
 		while x < AREA.end.x:
@@ -82,6 +87,7 @@ static func _dress(lines: Array[String], salt: int) -> Array[String]:
 				var ch := PAIRS[_pick(x, y, 2, salt) % PAIRS.length()]
 				g[y][x] = ch
 				g[y][x + 1] = ch
+				pairs.append(Vector2i(x, y))
 				x += 2
 			elif free.call(x, y + 1) and not free.call(x + 1, y + 1) and not free.call(x - 1, y + 1):
 				g[y][x] = "v"
@@ -91,19 +97,30 @@ static func _dress(lines: Array[String], salt: int) -> Array[String]:
 				g[y][x] = SINGLES[_pick(x, y, 1, salt) % SINGLES.length()]
 				singles.append(Vector2i(x, y))
 				x += 1
-	# Enough lamps that the yard is not a black hole: swap singles nearest the middle for floodlights.
+	# Enough lamps that the yard is not a black hole: swap singles nearest the middle for floodlights,
+	# and when there are too few singles, split pairs into a floodlight and a tank.
 	var lights := 0
 	for row in g:
 		for ch: String in row:
 			if ch in LIGHTS:
-				lights += 1
-	singles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return absf(a.x - 11.5) < absf(b.x - 11.5))
+				lights += 1 if ch != "v" else 0
+	for row in g:
+		lights += "".join(row).count("v") / 2 # one lit load per wagon, on two tiles
+	var middle_first := func(a: Vector2i, b: Vector2i) -> bool: return absf(a.x - 11.5) < absf(b.x - 11.5)
+	singles.sort_custom(middle_first)
+	pairs.sort_custom(middle_first)
 	for c in singles:
 		if lights >= MIN_LIGHTS:
 			break
 		if not (g[c.y][c.x] in LIGHTS):
 			g[c.y][c.x] = "L"
 			lights += 1
+	for c in pairs:
+		if lights >= MIN_LIGHTS:
+			break
+		g[c.y][c.x] = "L"
+		g[c.y][c.x + 1] = "T"
+		lights += 2
 	var out: Array[String] = []
 	for row in g:
 		out.append("".join(row))
@@ -114,4 +131,4 @@ static func _dress(lines: Array[String], salt: int) -> Array[String]:
 static func _pick(x: int, y: int, n: int, salt: int) -> int:
 	var c2 := 2 * x + n - 1 # doubled centre column
 	var key := mini(c2, 2 * (C.ROOM_W - 1) - c2)
-	return absi(hash([key, y, salt]))
+	return absi(hash([key, mini(y, C.ROOM_H - 1 - y), salt]))

@@ -34,6 +34,9 @@ func _init() -> void:
 		var good: bool = street.is_valid() and not lay.props.is_empty()
 		for p: Dictionary in lay.props:
 			good = good and StreetData.PROPS.has(p.key)
+			if good:
+				for part: Array in StreetData.PROPS[p.key][p.variant].values():
+					good = good and ResourceLoader.exists("res://art/street/%s.png" % part[0])
 		street.free()
 		if not good:
 			street_bad += 1
