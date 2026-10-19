@@ -113,11 +113,6 @@ func _icon(ci: CanvasItem, c: Vector2, col: Color) -> void:
 			ci.draw_colored_polygon(bolt, col)
 		"combat_scrap":
 			_gear(ci, c, 8.0, col)
-		"street":
-			# A raindrop over a puddle line.
-			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -11), c + Vector2(6, 1), c + Vector2(-6, 1)]), col)
-			ci.draw_circle(c + Vector2(0, 2), 6.0, col)
-			ci.draw_line(c + Vector2(-10, 11), c + Vector2(10, 11), col, 2.0)
 		"shop":
 			ci.draw_circle(c, 9.0, col)
 			ci.draw_string(ThemeDB.fallback_font, c + Vector2(-5, 6), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.1, 0.08, 0.05))

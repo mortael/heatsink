@@ -28,7 +28,7 @@ var pause_menu: PauseMenu
 var touch: TouchControls
 var run: RunMap
 var ambience: Ambience
-var street_layout := -1 # tests: force this hand-made Rainside layout instead of a generated one
+var street_layout := -1 # tests: build every combat room as this hand-made Rainside layout
 
 var dead := false
 var victory := false
@@ -134,7 +134,8 @@ func _build_room(kind: String) -> void:
 	room_kind = kind
 	run.enter(kind)
 	took_damage_this_room = false
-	if kind == "street":
+	var yard := RunMap.is_yard(kind, run.index) or street_layout >= 0
+	if yard:
 		var gen := RandomNumberGenerator.new()
 		gen.seed = randi()
 		var lay := StreetGen.generate(gen)
@@ -146,8 +147,8 @@ func _build_room(kind: String) -> void:
 		room = street
 	else:
 		room = Room.new(_pick_layout(kind))
-	ambience.night = kind == "street"
-	Upright.on = kind == "street"
+	ambience.night = yard
+	Upright.on = yard
 	world.y_sort_enabled = Upright.on
 	ambience.apply_lights()
 	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
@@ -275,7 +276,7 @@ func on_room_cleared(time: float) -> void:
 
 func _give_reward() -> void:
 	match room_kind:
-		"combat_item", "street":
+		"combat_item":
 			_open_picker("reward", inventory.offer(3), "CHOOSE A SALVAGE")
 		"combat_conductor":
 			var conductors := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword == "conductor"

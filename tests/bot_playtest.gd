@@ -3,7 +3,6 @@ extends Node
 ## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [mode] [shot_dir]
 ## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test),
 ## "slagged" starts with the three Slagged items, "elite" always takes an Elite door when one is offered,
-## "street" always takes the Rainside door when one is offered,
 ## "forge" starts with Tinder Rounds and 3 Cores so the Anvil can force a Fusion. Between fights the bot shops, rests, gambles
 ## and walks through a random door, so a long run exercises the whole Stratum route.
 ## Add "diff=N" anywhere after the seconds (0 COLD .. 4 MELTDOWN, default 1 WARM) to play a difficulty level,
@@ -26,7 +25,6 @@ var picks := 0
 var picker_frames := 0
 var slagged := false
 var elite_mode := false
-var street_mode := false
 var dodges := 0
 var hits := {} # damage source -> pips lost
 var last_pips := -1
@@ -59,7 +57,6 @@ func _ready() -> void:
 	all_items = args.size() > 2 and args[2] == "allitems"
 	slagged = args.size() > 2 and args[2] == "slagged"
 	elite_mode = args.size() > 2 and args[2] == "elite"
-	street_mode = args.size() > 2 and args[2] == "street"
 	if args.size() > 3:
 		shot_dir = args[3]
 	game = load("res://main.tscn").instantiate()
@@ -300,7 +297,7 @@ func _explore(p: Player) -> void:
 		return
 	if door_pick < 0 or door_pick >= open.size():
 		door_pick = randi() % open.size()
-		var want := "elite" if elite_mode else ("street" if street_mode else "")
+		var want := "elite" if elite_mode else ""
 		for i in open.size():
 			if open[i].kind == want:
 				door_pick = i
