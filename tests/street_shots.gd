@@ -48,7 +48,8 @@ func _process(_delta: float) -> void:
 	var name_: String = StreetData.TEMPLATES[layout].name if layout < StreetData.TEMPLATES.size() else "gen%d" % (layout - StreetData.TEMPLATES.size())
 	match stage_frame:
 		3:
-			game._build_room("street")
+			game.run.index = RunMap.FLAT_ROOMS # the next room is past the flat start
+			game._build_room("combat_item")
 		6:
 			game.director.active = false
 			for c in game.director.get_children():
