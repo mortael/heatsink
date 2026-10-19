@@ -28,7 +28,7 @@ var pause_menu: PauseMenu
 var touch: TouchControls
 var run: RunMap
 var ambience: Ambience
-var street_layout := -1 # tests: force this Rainside layout instead of a random one
+var street_layout := -1 # tests: force this hand-made Rainside layout instead of a generated one
 
 var dead := false
 var victory := false
@@ -135,7 +135,13 @@ func _build_room(kind: String) -> void:
 	run.enter(kind)
 	took_damage_this_room = false
 	if kind == "street":
-		var street := StreetRoom.new(street_layout if street_layout >= 0 else randi() % StreetData.LAYOUTS.size())
+		var gen := RandomNumberGenerator.new()
+		gen.seed = randi()
+		var lay := StreetGen.generate(gen)
+		if street_layout >= 0: # tests: a hand-made yard
+			var t: Dictionary = StreetData.TEMPLATES[street_layout % StreetData.TEMPLATES.size()]
+			lay = StreetGen.layout(t.lines, t.backdrop, 0)
+		var street := StreetRoom.new(lay)
 		street.focus = player
 		room = street
 	else:

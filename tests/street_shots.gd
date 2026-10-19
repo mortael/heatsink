@@ -1,5 +1,5 @@
 extends Node
-## Staged screenshots of each Rainside layout: a fight with bolts in the air and the doors open,
+## Staged screenshots of each hand-made Rainside layout and of a few generated ones: a fight with bolts in the air and the doors open,
 ## and the player standing behind a tall prop so its crown fades out.
 ## Needs a real renderer, not --headless:
 ## xvfb-run godot --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/street_shots.tscn -- <shot_dir>
@@ -8,6 +8,7 @@ var shot_dir := "user://shots"
 var game: Node
 var layout := -1
 var stage_frame := 0
+const GENERATED := 5
 
 
 func _ready() -> void:
@@ -29,11 +30,12 @@ func _next_layout() -> void:
 		game.queue_free()
 		game = null
 	layout += 1
-	if layout >= StreetData.LAYOUTS.size():
+	if layout >= StreetData.TEMPLATES.size() + GENERATED:
 		get_tree().quit(0)
 		return
+	seed(5 + layout)
 	game = load("res://main.tscn").instantiate()
-	game.street_layout = layout
+	game.street_layout = layout if layout < StreetData.TEMPLATES.size() else -1
 	add_child(game)
 	stage_frame = 0
 
@@ -43,7 +45,7 @@ func _process(_delta: float) -> void:
 		return
 	stage_frame += 1
 	var p: Player = game.player
-	var name_: String = StreetData.LAYOUTS[layout].name
+	var name_: String = StreetData.TEMPLATES[layout].name if layout < StreetData.TEMPLATES.size() else "gen%d" % (layout - StreetData.TEMPLATES.size())
 	match stage_frame:
 		3:
 			game._build_room("street")
@@ -56,6 +58,8 @@ func _process(_delta: float) -> void:
 			game._open_doors()
 			p.bot = true
 			p.position = Vector2(7.5, 8.5) * C.TILE
+			if not game.room.is_open(p.position, 20.0):
+				p.position = Vector2(12.5, 10.5) * C.TILE
 			var kinds := [Clinker, Sparkhound, Slagspitter, SlagMortar, Linesman, Forgewarden, Clinker]
 			var offs := [Vector2(5, -1.5), Vector2(6.5, 0.5), Vector2(8, -2.5), Vector2(10.5, 1.0), Vector2(3, 2.0), Vector2(11, -3.0), Vector2(2.5, -2.0)]
 			for i in kinds.size():
