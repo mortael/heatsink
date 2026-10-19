@@ -417,11 +417,15 @@ func _draw() -> void:
 		core = C.HEAT_COLD.lerp(C.HEAT_WARM, heat.value / heat.hot_at)
 	else:
 		core = C.HEAT_WARM.lerp(C.HEAT_HOT, clampf((heat.value - heat.hot_at) / 20.0, 0.0, 1.0))
+	if Upright.on: # the glow and the Vent ring lie flat on the floor around the feet, under the sprite
+		draw_set_transform(Upright.feet(RADIUS), 0.0, Vector2(1.0, 0.45))
 	# Hot glow
 	if heat.band == Heat.Band.HOT:
 		draw_circle(Vector2.ZERO, RADIUS + 9.0, Color(1, 0.6, 0.2, 0.18 * a))
 	var body := Vector2.ZERO
 	if Upright.on:
+		_draw_vent_ring(a)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_figure(a)
 		body = Vector2(0, -Upright.BOLT_LIFT)
 	else:
@@ -437,7 +441,8 @@ func _draw() -> void:
 				pts.append(body + Vector2.from_angle(i * TAU / 6.0 + PI / 6.0) * (RADIUS + 9.0))
 			draw_polyline(pts, Color(1, 0.75, 0.3, 0.9 * a), 3.0)
 			draw_colored_polygon(pts.slice(0, 6), Color(1, 0.6, 0.2, 0.15 * a))
-	_draw_vent_ring(a)
+	if not Upright.on:
+		_draw_vent_ring(a)
 
 
 ## Rainside: the Sink as a standing sprite with its weapon in hand, turned to the aim.

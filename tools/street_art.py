@@ -84,6 +84,7 @@ class Scene:
 		self.reflect = []  # (x, ground y, height, colour, strength, width)
 		self.halos = []  # (x, y, radius, colour, strength) for the glow layer
 		self.neon = np.zeros((H, W, 3), np.float32)
+		self.cov = np.zeros((H, W), np.float32)  # how much of each pixel props cover (for cutting props out)
 
 	# ------------------------------------------------------------ painting primitives
 
@@ -103,6 +104,7 @@ class Scene:
 		self.alb[reg] = self.alb[reg] * (1 - a) + c * a
 		self.emis[reg] = self.emis[reg] * (1 - a) + e * a
 		self.gnd[reg] = self.gnd[reg] * (1 - a[..., 0]) + ground * a[..., 0]
+		self.cov[reg] = np.maximum(self.cov[reg], a[..., 0])
 		if over_from is not None:
 			oy1 = min(Y1, over_from)
 			if oy1 > Y0:
@@ -153,7 +155,9 @@ class Scene:
 			f = s / (1.0 + 6.0 * d2) * np.clip(1.0 - d2 * 0.25, 0, 1)
 			lightmap += f[..., None] * c
 		img = self.alb * lightmap + self.emis
-		img += self._reflections(yy, xx)
+		self.refl = self._reflections(yy, xx)
+		self.lm = lightmap
+		img += self.refl
 		over = self.ov_alb * lightmap + self.ov_emis
 		# Rain haze: a faint blue lift that grows towards the bottom of the view.
 		haze = (0.012 + 0.02 * (yy / H))[..., None] * col(0.5, 0.65, 1.0)
@@ -409,8 +413,11 @@ def crates(sc, tx0, ty0, rng):
 	sc.shade(x0 - 1, y0 + 4, x0 + 49, y0 + 26, 0.55, 2)
 	m = np.zeros((h, w), np.float32)
 	rgb = np.zeros((h, w, 3), np.float32)
-	boxes = [(1, h - 22, 23, h - 1, col(0.32, 0.2, 0.12)), (24, h - 22, 47, h - 1, col(0.2, 0.25, 0.3)),
-			 (8, h - 34, 32, h - 21, col(0.3, 0.28, 0.2))]
+	paints = [col(0.32, 0.2, 0.12), col(0.2, 0.25, 0.3), col(0.3, 0.28, 0.2), col(0.18, 0.26, 0.2), col(0.34, 0.14, 0.12)]
+	pick = rng.permutation(len(paints))[:3]
+	top_x = int(rng.integers(4, 20))
+	boxes = [(1, h - 22, 23, h - 1, paints[pick[0]]), (24, h - 22, 47, h - 1, paints[pick[1]]),
+			 (top_x, h - 34, top_x + 24, h - 21, paints[pick[2]])]
 	for (bx0, by0, bx1, by1, c) in boxes:
 		top = by0 + 7  # top face (lighter) above the front face
 		m[by0:by1, bx0:bx1] = 1
@@ -498,6 +505,84 @@ def slag_spill(sc, x, y, r, rng):
 	em = (hot[..., None] ** 1.3) * col(1.0, 0.4, 0.08) * 1.5
 	sc.put(int(x - size / 2), int(y - size / 2), rgb, m, em)
 	sc.light(x, y - 2, col(1.0, 0.42, 0.12), r * 3, 0.8, x, y, rwidth=r * 0.4)
+
+
+def gas_cylinders(sc, tx0, ty0):
+	"""A cage of gas bottles on one tile: red, yellow and green caps, chained to a rail."""
+	rng = sc.rng
+	x0, y0 = tx(tx0), ty(ty0)
+	sc.shade(x0 + 1, y0 + 8, x0 + 23, y0 + 26, 0.5, 2)
+	w, h = 22, 34
+	m = np.zeros((h, w), np.float32)
+	rgb = np.zeros((h, w, 3), np.float32)
+	paints = [col(0.45, 0.1, 0.08), col(0.55, 0.42, 0.08), col(0.12, 0.3, 0.16), col(0.2, 0.24, 0.3)]
+	order = rng.permutation(len(paints))
+	for i, bx in enumerate((1, 8, 15)):
+		bh = int(rng.integers(26, 31))
+		top = h - 1 - bh
+		c = paints[order[i]]
+		m[top + 2:h - 1, bx:bx + 6] = 1
+		m[top:top + 3, bx + 1:bx + 5] = 1  # shoulder and valve
+		xx = np.arange(6, dtype=np.float32)
+		shade_ = (0.6 + 0.7 * np.clip(1 - np.abs(xx - 2) / 3.5, 0, 1))[None, :, None]
+		rgb[top + 2:h - 1, bx:bx + 6] = c * shade_
+		rgb[top:top + 3, bx + 1:bx + 5] = col(0.35, 0.35, 0.37)
+		rgb[top + 8:top + 10, bx:bx + 6] = col(0.8, 0.78, 0.7) * 0.6  # label band
+	m[h - 12:h - 10, 0:w] = 1  # chain rail
+	rgb[h - 12:h - 10, 0:w] = col(0.32, 0.3, 0.28)
+	rgb = rusty(rgb, rng, 0.35)
+	sc.put(x0 + 1, y0 + 24 - h, rgb, m, over_from=y0)
+
+
+def pipe_stack(sc, tx0, ty0):
+	"""Steel pipes stacked on timber sleepers, two tiles wide, ends towards the viewer."""
+	rng = sc.rng
+	x0, y0 = tx(tx0), ty(ty0)
+	sc.shade(x0 - 1, y0 + 6, x0 + 49, y0 + 26, 0.55, 2)
+	w, h = 48, 30
+	m = np.zeros((h, w), np.float32)
+	rgb = np.zeros((h, w, 3), np.float32)
+	m[h - 4:h - 1, 2:w - 2] = 1
+	rgb[h - 4:h - 1, 2:w - 2] = col(0.22, 0.15, 0.1)
+	steel = col(0.3, 0.31, 0.33) if rng.random() < 0.5 else col(0.33, 0.24, 0.18)
+	rows = [(h - 10, 7, 6), (h - 19, 6, 5), (h - 27, 4, 5)]
+	for (cy, n, r) in rows:
+		span = n * (2 * r + 1)
+		start = (w - span) // 2 + int(rng.integers(-2, 3))
+		for i in range(n):
+			cx = start + r + i * (2 * r + 1)
+			disc = ellipse_mask(h, w, cx - r, cy - r, cx + r, cy + r)
+			ring = disc - ellipse_mask(h, w, cx - r + 2, cy - r + 2, cx + r - 2, cy + r - 2)
+			m = np.maximum(m, disc)
+			body = steel * (0.8 + 0.4 * rng.random())
+			rgb = np.where((disc > 0.5)[..., None], col(0.04, 0.04, 0.05), rgb)  # the dark bore
+			rgb = np.where((ring > 0.5)[..., None], body, rgb)
+	rgb = rusty(rgb, rng, 0.55)
+	sc.put(x0, y0 + 24 - h, rgb, m, over_from=y0)
+
+
+def ingots(sc, tx0, ty0):
+	"""A pallet of fresh ingots on one tile, still glowing at the bottom of the stack."""
+	rng = sc.rng
+	x0, y0 = tx(tx0), ty(ty0)
+	sc.shade(x0, y0 + 8, x0 + 24, y0 + 26, 0.5, 2)
+	w, h = 22, 24
+	m = np.zeros((h, w), np.float32)
+	rgb = np.zeros((h, w, 3), np.float32)
+	em = np.zeros((h, w, 3), np.float32)
+	m[h - 4:h - 1, 0:w] = 1
+	rgb[h - 4:h - 1, 0:w] = col(0.24, 0.16, 0.1)
+	for layer in range(4):
+		ly = h - 4 - (layer + 1) * 4
+		heat = max(0.0, 1.0 - layer * 0.4) * (0.7 + 0.3 * rng.random())
+		for i in range(3 - layer % 2):
+			bx = 1 + i * 7 + (3 if layer % 2 else 0)
+			m[ly:ly + 4, bx:bx + 6] = 1
+			rgb[ly:ly + 4, bx:bx + 6] = col(0.2, 0.18, 0.17)
+			rgb[ly, bx:bx + 6] = col(0.36, 0.33, 0.31)
+			em[ly + 1:ly + 4, bx:bx + 6] = col(1.0, 0.4, 0.1) * heat * 0.9
+	sc.put(x0 + 1, y0 + 24 - h, rgb, m, em, over_from=y0)
+	sc.light(x0 + 12, y0 + 16, col(1.0, 0.45, 0.15), 36, 0.8, x0 + 12, y0 + 22, rwidth=3.0)
 
 
 # ---------------------------------------------------------------- the foundry hall and the yard edges
@@ -772,7 +857,9 @@ STYLES = {
 
 # '#' boundary (the hall fills rows 0-2), '.' floor. Props, every tile of them solid:
 # 'v' slag wagon parked north-south (2 tiles tall), 'c' crate stack (2 tiles wide), 'T' coolant tank,
-# 'L' floodlight mast, 'h' crash barrier run, 'd' scrap bin (2 wide), 'm' control console.
+# 'L' floodlight mast, 'h' crash barrier run, 'd' scrap bin (2 wide), 'm' control console,
+# 'p' pipe stack (2 wide), 'g' gas bottles, 'i' ingot pallet.
+# These hand-made yards are templates; most Rainside rooms are generated (scripts/street_gen.gd).
 LAYOUTS = [
 	{
 		"name": "smelter", "style": "smelter", "seed": 11,
@@ -857,7 +944,7 @@ def props_of(lines):
 			if ch == "v":
 				seen.add((x, y + 1))
 				out.append(("v", x, y, 1))
-			elif ch in "cd":
+			elif ch in WIDE:
 				seen.add((x + 1, y))
 				out.append((ch, x, y, 2))
 			elif ch == "h":
@@ -871,17 +958,78 @@ def props_of(lines):
 	return out
 
 
-def paint_layout(lay):
-	sc = Scene(lay["seed"])
-	style = STYLES[lay["style"]]
-	ground(sc, lay["ground"])
-	lane_lines(sc, lay["lanes"])
-	for (x, y) in lay.get("drains", []):
+# ---------------------------------------------------------------- backdrops: the hall, the yard and its ground
+
+SIGNS = {
+	"smelter": [("SMELTER", "NO. 7"), ("SMELTER", "NO. 3"), ("FOUNDRY", "HALL 2")],
+	"coolant": [("COOLANT", "PUMP HOUSE"), ("COOLANT", "LOOP B"), ("QUENCH", "TANK FARM")],
+	"scrapyard": [("SCRAP YARD", "KEEP OUT"), ("SCRAP YARD", "NO ENTRY"), ("SALVAGE", "WEIGH STATION")],
+}
+SIGN_COLORS = {
+	"smelter": (col(1.0, 0.45, 0.12), col(1.0, 0.75, 0.3)),
+	"coolant": (col(0.25, 0.9, 1.0), col(0.6, 1.0, 0.95)),
+	"scrapyard": (col(1.0, 0.22, 0.18), col(1.0, 0.7, 0.2)),
+}
+SIGN_X = (446, 430, 404)  # generated signs stay right of centre: the left corner holds the HUD
+VARIANTS = 3  # backdrops per style; variant 0 is the hand-made template's ground
+
+
+def random_ground(rng):
+	"""Ground markings, slag spills and drains for a generated backdrop."""
+	regions, lanes, spills, drains = [], [], [], []
+	roll = rng.random()
+	if roll < 0.35:
+		y0 = int(rng.integers(4, 7))
+		regions.append(("deck", 1, y0, 23, y0 + int(rng.integers(2, 5))))
+	elif roll < 0.65:
+		y = int(rng.integers(6, 10))
+		regions.append(("rail", 1, y, 23, y + 1))
+		if rng.random() < 0.5:
+			lanes = [(x, 4, y) for x in range(1 + int(rng.integers(0, 3)), 23, 3)]
+	if rng.random() < 0.5:
+		x = int(rng.integers(3, 17))
+		y = int(rng.integers(5, 10))
+		regions.append(("stripe", x, y, x + int(rng.integers(2, 5)), y + 1))
+	for _ in range(int(rng.integers(1, 4))):
+		spills.append((float(rng.uniform(2.5, 21.5)), float(rng.uniform(5.5, 11.3)), int(rng.integers(3, 6))))
+	for _ in range(int(rng.integers(1, 4))):
+		drains.append((int(rng.integers(2, 21)), int(rng.integers(5, 11))))
+	return regions, lanes, spills, drains
+
+
+def backdrops():
+	"""Every backdrop to paint: variant 0 of each style keeps its template's ground."""
+	out = []
+	templates = {lay["style"]: lay for lay in LAYOUTS}
+	for si, style in enumerate(STYLES):
+		for v in range(VARIANTS):
+			rng = np.random.default_rng(1000 + 17 * v + 101 * si)
+			lay = templates[style]
+			if v == 0:
+				ground_ = (lay["ground"], lay["lanes"], lay["spills"], lay.get("drains", []))
+				sign = lay["sign"]
+			else:
+				ground_ = random_ground(rng)
+				text, sub = SIGNS[style][v]
+				c, subc = SIGN_COLORS[style]
+				size = 19 if len(text) <= 8 else 18
+				sign = (text, sub, SIGN_X[v % len(SIGN_X)], 11, size, c, subc)
+			out.append({"name": "%s_%d" % (style, v), "style": style, "seed": lay["seed"] + 100 * v, "ground": ground_, "sign": sign})
+	return out
+
+
+def paint_backdrop(bd):
+	sc = Scene(bd["seed"])
+	style = STYLES[bd["style"]]
+	regions, lanes, spills, drains = bd["ground"]
+	ground(sc, regions)
+	lane_lines(sc, lanes)
+	for (x, y) in drains:
 		drain(sc, x, y)
-	for (x, y, r) in lay.get("spills", []):
+	for (x, y, r) in spills:
 		slag_spill(sc, OX + x * T, OY + y * T, r, sc.rng)
 	building(sc, style)
-	text, sub, sx, sy, size, c, subc = lay["sign"]
+	text, sub, sx, sy, size, c, subc = bd["sign"]
 	bbox, cx, cy = neon_text(sc, text, sx, sy, size, c, sub, subc)
 	fb = (bbox[0], bbox[1], bbox[2], bbox[3] + (size // 3 + 4 if sub else 0))
 	sign_board(sc, fb)
@@ -889,25 +1037,87 @@ def paint_layout(lay):
 	sc.light(cx, cy + 6, c, 120, 1.0, cx, FACADE_BASE + 2, rwidth=10.0)
 	sc.halos.append((cx, cy, 60, c, 0.5))
 	yard_walls(sc)
-	props = sorted(props_of(lay["lines"]), key=lambda p: p[2] + (1 if p[0] == "v" else 0))
-	for (kind, x, y, n) in props:
-		if kind == "v":
-			ore_wagon(sc, x, y, sc.rng)
-		elif kind == "c":
-			crates(sc, x, y, sc.rng)
-		elif kind == "T":
-			tank(sc, x, y)
-		elif kind == "L":
-			floodlight(sc, x, y)
-		elif kind == "h":
-			barrier(sc, x, y, n)
-		elif kind == "d":
-			scrap_bin(sc, x, y)
-		elif kind == "m":
-			console(sc, x, y)
 	img, over, glow = sc.render()
-	sign = (fb[0] - 5, fb[1] - 5, fb[2] + 5, fb[3] + 5)
-	return img, over, sc.ov_a, glow, sc.neon, sign, c
+	return img, over, sc.ov_a, glow, sc.neon
+
+
+# ---------------------------------------------------------------- props, painted alone and cut out
+
+# Prop chars in layouts. Every tile of a prop is solid. 'v' stands on two tiles north-south,
+# the WIDE ones on two tiles east-west, 'h' runs over n tiles; the rest take one tile.
+WIDE = "cdp"
+PROPS = {
+	"T": [lambda sc, x, y: tank(sc, x, y), lambda sc, x, y: tank(sc, x, y, col(0.4, 1.0, 0.5)), lambda sc, x, y: tank(sc, x, y, col(1.0, 0.7, 0.25))],
+	"L": [lambda sc, x, y: floodlight(sc, x, y), lambda sc, x, y: floodlight(sc, x, y, col(0.5, 0.6, 0.75))],
+	"m": [lambda sc, x, y: console(sc, x, y), lambda sc, x, y: console(sc, x, y, col(0.3, 0.85, 1.0)), lambda sc, x, y: console(sc, x, y, col(1.0, 0.4, 0.3))],
+	"v": [lambda sc, x, y: ore_wagon(sc, x, y, sc.rng)] * 3,
+	"c": [lambda sc, x, y: crates(sc, x, y, sc.rng)] * 3,
+	"d": [lambda sc, x, y: scrap_bin(sc, x, y)] * 3,
+	"p": [lambda sc, x, y: pipe_stack(sc, x, y)] * 3,
+	"g": [lambda sc, x, y: gas_cylinders(sc, x, y)] * 3,
+	"i": [lambda sc, x, y: ingots(sc, x, y)] * 2,
+}
+for n in range(1, 7):
+	PROPS["h%d" % n] = [lambda sc, x, y, n=n: barrier(sc, x, y, n)]
+PROBE = (6, 6)  # tile the props are painted on
+# A dim key light from the upper left so a prop alone is not lit flat; the same in both probe renders.
+KEY = (tx(PROBE[0]) - 30, ty(PROBE[1]) - 50, col(0.8, 0.75, 0.7), 110, 0.45)
+
+
+def probe(seed, painter):
+	sc = Scene(seed)
+	ground(sc, [])
+	sc.wet[:] = 0.45  # even wetness, so reflections come out as clean streaks the game can lay on any ground
+	sc.cov[:] = 0
+	x, y, c, r, k = KEY
+	sc.light(x, y, c, r, k, reflect=False, halo=False)
+	if painter is not None:
+		painter(sc, *PROBE)
+	img, over, glow = sc.render()
+	return sc, img, over, glow
+
+
+def crop(mask, pad=1):
+	ys, xs = np.nonzero(mask)
+	if len(xs) == 0:
+		return None
+	return (max(0, xs.min() - pad), max(0, ys.min() - pad), min(W, xs.max() + 1 + pad), min(H, ys.max() + 1 + pad))
+
+
+def lum(a):
+	return a @ col(0.3, 0.55, 0.15)
+
+
+def cut_prop(seed, painter):
+	"""A prop as up to four sprites: body (with its contact shadow), over (the part above its tiles,
+	drawn in front of actors), pool (light it throws on the wet ground) and glow (halos)."""
+	sa, ia, _, ga = probe(seed, None)
+	sb, ib, ob, gb = probe(seed, painter)
+	cov = np.clip(sb.cov, 0, 1)
+	shadow = np.where((cov < 0.02) & (lum(sa.alb) > 0.01), np.clip(1 - lum(sb.alb) / np.maximum(lum(sa.alb), 1e-3), 0, 1), 0)
+	# The light alone, on an even ground of the yard's average colour, so it sits on any backdrop.
+	gavg = sa.alb[ty(4):ty(11), tx(1):tx(23)].reshape(-1, 3).mean(0)
+	pool = (sb.lm - sa.lm) * gavg + (sb.refl - sa.refl)
+	pool = np.where((cov < 0.02)[..., None], np.clip(pool, 0, None), 0) * 0.85  # a lone prop reads brighter than in a painted yard
+	glow = np.clip(gb - ga, 0, None)
+	ox, oy = tx(PROBE[0]), ty(PROBE[1])
+	out = {}
+	bbox = crop((cov > 0.02) | (shadow > 0.03))
+	x0, y0, x1, y1 = bbox
+	body_rgb = np.where((cov > 0.02)[..., None], ib, 0)
+	body_a = np.maximum(cov, shadow)
+	out["body"] = (to_png(body_rgb[y0:y1, x0:x1], body_a[y0:y1, x0:x1], compensate=True), (x0 - ox, y0 - oy))
+	ob_ = crop(sb.ov_a > 0.02)
+	if ob_:
+		x0, y0, x1, y1 = ob_
+		out["over"] = (to_png(ob[y0:y1, x0:x1], sb.ov_a[y0:y1, x0:x1], compensate=True), (x0 - ox, y0 - oy))
+	for key, a in (("pool", pool), ("glow", glow)):
+		b = crop(a.max(-1) > 0.012, 0)
+		if b:
+			x0, y0, x1, y1 = b
+			part = np.clip(a[y0:y1, x0:x1], 0, 1)
+			out[key] = (to_png(part, (part.max(-1) > 0.004).astype(np.float32)), (x0 - ox, y0 - oy))
+	return out
 
 
 def to_png(rgb, alpha=None, compensate=False):
@@ -930,44 +1140,71 @@ def collision_lines(lines):
 def main():
 	out_dir = os.path.join(ROOT, "art", "street")
 	os.makedirs(out_dir, exist_ok=True)
-	entries = []
-	for lay in LAYOUTS:
-		assert len(lay["lines"]) == ROOM_H and all(len(r) == ROOM_W for r in lay["lines"]), lay["name"]
-		img, over, ov_a, glow, neon, sign, sc_col = paint_layout(lay)
-		n = lay["name"]
+	for f in os.listdir(out_dir):  # old outputs, so renamed or dropped layers do not linger
+		if f.endswith((".png", ".png.import")):
+			os.remove(os.path.join(out_dir, f))
+	bds = backdrops()
+	for bd in bds:
+		img, over, ov_a, glow, neon = paint_backdrop(bd)
+		n = bd["name"]
 		to_png(img, compensate=True).save(os.path.join(out_dir, n + "_base.png"), optimize=True)
 		to_png(over, ov_a, compensate=True).save(os.path.join(out_dir, n + "_over.png"), optimize=True)
 		g = np.clip(glow, 0, 1)
 		to_png(g, np.clip(g.max(-1) * 1.5, 0, 1)).save(os.path.join(out_dir, n + "_glow.png"), optimize=True)
 		ne = np.clip(neon, 0, 1)
 		to_png(ne, (ne.max(-1) > 0.02).astype(np.float32)).save(os.path.join(out_dir, n + "_neon.png"), optimize=True)
-		entries.append((n, collision_lines(lay["lines"]), sign, sc_col))
-	write_data(entries)
-	print("painted", ", ".join(e[0] for e in entries))
+	props = {}
+	for kind, painters in PROPS.items():
+		props[kind] = []
+		for v, painter in enumerate(painters):
+			parts = cut_prop(500 + 31 * v + sum(map(ord, kind)), painter)
+			entry = {}
+			for layer, (img, off) in parts.items():
+				name = "prop_%s_%d_%s" % (kind, v, layer)
+				img.save(os.path.join(out_dir, name + ".png"), optimize=True)
+				entry[layer] = (name, off)
+			props[kind].append(entry)
+	names = [bd["name"] for bd in bds]
+	templates = []
+	for lay in LAYOUTS:
+		assert len(lay["lines"]) == ROOM_H and all(len(r) == ROOM_W for r in lay["lines"]), lay["name"]
+		templates.append((lay["name"], names.index(lay["style"] + "_0"), lay["lines"]))
+	write_data(bds, props, templates)
+	print("painted %d backdrops and %d prop sprites" % (len(bds), sum(len(v) for v in props.values())))
 
 
-def write_data(entries):
+def write_data(bds, props, templates):
 	ox, oy = WORLD_OFFSET
 	out = [
 		"class_name StreetData",
 		"## Generated by tools/street_art.py: edit the layouts there and re-run it, not this file.",
-		"## Collision grids and sign positions for the Rainside rooms; the art is in res://art/street/.",
+		"## Backdrops, prop sprites and hand-made layouts for the Rainside rooms; the art is in res://art/street/.",
 		"",
 		"const ART_SCALE := 2.0 # one art pixel is this many world px",
 		"const ART_OFFSET := Vector2(%d, %d) # world px of art pixel (0, 0)" % (ox, oy),
-		"const LAYOUTS := [",
+		"const WIDE := \"%s\" # prop chars two tiles wide; 'v' is two tiles tall, 'h' runs" % WIDE,
+		"const BACKDROPS := [",
 	]
-	for (n, lines, sign, c) in entries:
-		x0, y0, x1, y1 = sign
-		out.append("\t{")
-		out.append('\t\t"name": "%s",' % n)
-		out.append("\t\t\"sign\": Rect2(%d, %d, %d, %d), # world px" % (ox + 2 * x0, oy + 2 * y0, 2 * (x1 - x0), 2 * (y1 - y0)))
-		out.append("\t\t\"sign_color\": Color(%.2f, %.2f, %.2f)," % tuple(float(v) for v in c))
-		out.append('\t\t"lines": [')
+	for bd in bds:
+		c = bd["sign"][5]
+		out.append('\t{"name": "%s", "style": "%s", "sign_color": Color(%.2f, %.2f, %.2f)},' % ((bd["name"], bd["style"]) + tuple(float(v) for v in c)))
+	out.append("]")
+	out.append("## Per prop char (barriers by length: h1..h6), its variants; each layer's file and its")
+	out.append("## top-left in world px from the top-left of the prop's first tile.")
+	out.append("const PROPS := {")
+	for kind, variants in props.items():
+		out.append('\t"%s": [' % kind)
+		for entry in variants:
+			fields = ", ".join('"%s": ["%s", Vector2(%d, %d)]' % (layer, name, 2 * off[0], 2 * off[1]) for layer, (name, off) in entry.items())
+			out.append("\t\t{%s}," % fields)
+		out.append("\t],")
+	out.append("}")
+	out.append("const TEMPLATES := [")
+	for (n, bd, lines) in templates:
+		out.append('\t{"name": "%s", "backdrop": %d, "lines": [' % (n, bd))
 		for row in lines:
-			out.append('\t\t\t"%s",' % row)
-		out.append("\t\t],")
-		out.append("\t},")
+			out.append('\t\t"%s",' % row)
+		out.append("\t]},")
 	out.append("]")
 	with open(os.path.join(ROOT, "scripts", "street_data.gd"), "w") as f:
 		f.write("\n".join(out) + "\n")
