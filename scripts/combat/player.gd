@@ -35,6 +35,7 @@ const HIT_INVULN := 1.0
 
 var game: RunGame
 var inventory: Inventory
+var effects: CombatEffects
 var heat := Heat.new()
 var max_pips := MAX_PIPS # Altars and Wager stakes spend these
 var pips := MAX_PIPS
@@ -237,6 +238,7 @@ func _fire() -> void:
 			direction = primary_dir.rotated(0.12 * side)
 		var rivet := Rivet.new()
 		rivet.inventory = inventory
+		rivet.effects = effects
 		rivet.fx = game.fx
 		rivet.position = global_position + aim_dir * (RADIUS + 6.0)
 		rivet.dir = direction
@@ -318,7 +320,7 @@ func _vent() -> void:
 	Juice.add_trauma(0.2 + 0.25 * amount / 100.0)
 	Sfx.play("vent", -6.0 + amount / 20.0)
 	vented.emit(amount)
-	inventory.on_vent(amount)
+	effects.on_vent(amount)
 
 
 func take_hit(amount: int, source: String) -> void:
@@ -356,7 +358,7 @@ func _on_band_changed(new_band: int, old_band: int) -> void:
 
 func _on_overheated() -> void:
 	Sfx.play("overheat")
-	inventory.on_overheat()
+	effects.on_overheat()
 	Juice.add_trauma(0.3)
 	game.fx.sparks(global_position, Vector2.UP, 16, C.HEAT_OVER)
 	gauge_pulsed.emit()

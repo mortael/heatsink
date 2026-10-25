@@ -4,6 +4,7 @@ extends Node
 const RivetScript = preload("res://scripts/combat/projectiles/rivet.gd")
 const ShardScript = preload("res://scripts/combat/projectiles/shard.gd")
 const EnemyScript = preload("res://scripts/combat/enemies/enemy.gd")
+const CombatEffectsScript = preload("res://scripts/combat/combat_effects.gd")
 
 class ControlledInventory extends Inventory:
 	func crit_chance() -> float:
@@ -52,9 +53,13 @@ func _fixture() -> void:
 	game.player.position = Vector2(1000.0, 1000.0)
 	game.inventory = ControlledInventory.new()
 	game.inventory.player = game.player
-	game.inventory.fx = game.fx
-	game.inventory.projectile_parent = game.world
 	game.world.add_child(game.inventory)
+	game.effects = CombatEffectsScript.new()
+	game.effects.inventory = game.inventory
+	game.effects.player = game.player
+	game.effects.fx = game.fx
+	game.effects.projectile_parent = game.world
+	game.world.add_child(game.effects)
 
 
 func _clear_fixture() -> void:
@@ -68,7 +73,7 @@ func _enemy(pos: Vector2, hp := 100.0) -> Enemy:
 	enemy.game = game
 	enemy.position = pos
 	enemy.max_hp = hp
-	enemy.defeated.connect(game.inventory.on_kill)
+	enemy.defeated.connect(game.effects.on_kill)
 	game.world.add_child(enemy)
 	return enemy
 
@@ -80,6 +85,7 @@ func _shards() -> Array:
 func _rivet(pos: Vector2) -> Rivet:
 	var rivet := RivetScript.new()
 	rivet.inventory = game.inventory
+	rivet.effects = game.effects
 	rivet.fx = game.fx
 	rivet.position = pos
 	game.world.add_child(rivet)
@@ -106,9 +112,9 @@ func _shard_recursion() -> void:
 	victim.take_damage(1.0, false, Vector2.ZERO, "shard", 1)
 	var shards := _shards()
 	check(shards.size() == 4, "A generation-one shard kill spawns four next-generation shards")
-	check(shards.all(func(shard: Shard) -> bool: return shard.depth == Inventory.SHARD_DEPTH_CAP), "Spawned shards carry the recursion depth cap")
+	check(shards.all(func(shard: Shard) -> bool: return shard.depth == CombatEffects.SHARD_DEPTH_CAP), "Spawned shards carry the recursion depth cap")
 	victim = _enemy(Vector2(100.0, 0.0), 1.0)
-	victim.take_damage(1.0, false, Vector2.ZERO, "shard", Inventory.SHARD_DEPTH_CAP)
+	victim.take_damage(1.0, false, Vector2.ZERO, "shard", CombatEffects.SHARD_DEPTH_CAP)
 	check(_shards().size() == 4, "A shard kill at the depth cap cannot create another generation")
 	await _clear_fixture()
 
@@ -125,6 +131,7 @@ func _homing_and_flare_lifetime() -> void:
 	eligible.add_ignite(1, 10)
 	var shard := ShardScript.new()
 	shard.inventory = game.inventory
+	shard.effects = game.effects
 	shard.homing = true
 	game.world.add_child(shard)
 	shard._physics_process(0.1)
@@ -135,6 +142,7 @@ func _homing_and_flare_lifetime() -> void:
 	check(shard.dir.is_equal_approx(previous_dir), "Homing ignores non-Ignited, dead, and out-of-range enemies")
 	var flare := ShardScript.new()
 	flare.inventory = game.inventory
+	flare.effects = game.effects
 	flare.flare = true
 	flare.position = Vector2(500.0, 500.0)
 	game.world.add_child(flare)
@@ -153,14 +161,14 @@ func _flare_detonation() -> void:
 	var web_target := _enemy(Vector2(72.0, 0.0))
 	var burst_target := _enemy(Vector2.ZERO)
 	for x: float in [0.0, 144.0, 192.0]:
-		game.inventory.spawn_shard(Vector2(x, 0.0), Vector2.RIGHT, 1)
+		game.effects.spawn_shard(Vector2(x, 0.0), Vector2.RIGHT, 1)
 	var detonations: Array[bool] = []
-	game.inventory.flares_detonated.connect(func() -> void: detonations.append(true))
-	game.inventory.on_vent(0.0)
+	game.effects.flares_detonated.connect(func() -> void: detonations.append(true))
+	game.effects.on_vent(0.0)
 	check(is_equal_approx(web_target.hp, 88.0), "Overlapping flare web segments damage an enemy only once")
 	check(is_equal_approx(burst_target.hp, 76.0), "A flare endpoint applies its burst plus one web hit")
 	check(get_tree().get_nodes_in_group("flares").is_empty(), "Vent immediately consumes every flare")
-	game.inventory.on_vent(0.0)
+	game.effects.on_vent(0.0)
 	check(is_equal_approx(web_target.hp, 88.0) and is_equal_approx(burst_target.hp, 76.0) and detonations.size() == 1, "A second Vent cannot detonate consumed flares again")
 	await _clear_fixture()
 
@@ -291,7 +299,7 @@ func _tempered_pyre_coating() -> void:
 		rivet._hit_enemy(nearby)
 		check(nearby.ignite_stacks == (3 if tempered else 2), "Pyre Coating applies its ordinary or tempered Ignite stacks on a Hot Rivet hit")
 		nearby.clear_ignite()
-		game.inventory.on_overheat()
+		game.effects.on_overheat()
 		check(nearby.ignite_stacks == (5 if tempered else 3), "Pyre Coating's Overheat burst applies its upgraded stack count")
 		check(extended.ignite_stacks == (5 if tempered else 0) and outside.ignite_stacks == 0, "Tempered Pyre extends Overheat range from four to five tiles")
 		await _clear_fixture()
@@ -308,7 +316,7 @@ func _tempered_arcs() -> void:
 		for i in 6:
 			targets.append(_enemy(Vector2((i + 1) * 40.0, 0.0)))
 		targets[-1].add_ignite(2, 10)
-		game.inventory.on_vent(0.0)
+		game.effects.on_vent(0.0)
 		var ordinary_hits := 4 if tempered else 2
 		for i in 5:
 			var expected_hp := 100.0

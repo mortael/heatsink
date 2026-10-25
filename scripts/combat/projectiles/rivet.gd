@@ -8,6 +8,7 @@ const SPEED := 14.0 * C.TILE
 const DAMAGE := 8.0
 
 var inventory: Inventory
+var effects: CombatEffects
 var fx: Fx
 var dir := Vector2.RIGHT
 var overdrive := false
@@ -81,7 +82,7 @@ func _physics_process(delta: float) -> void:
 			Sfx.play("ricochet", 0.0, -8.0)
 			continue
 		fx.impact(global_position, normal, _color())
-		inventory.on_wall_stop(global_position, normal)
+		effects.on_wall_stop(global_position, normal)
 		queue_free()
 		return
 	queue_redraw()
@@ -94,7 +95,7 @@ func _hit_enemy(e: Enemy) -> void:
 	if ricocheted and inv.has("rebound_charge"):
 		dmg *= 2.0 if inv.is_tempered("rebound_charge") else 1.5
 	e.embed_rivet()
-	inv.on_rivet_hit(e, self, crit) # on-hit effects land before damage, so a killing hit still ignites
+	effects.on_rivet_hit(e, overdrive, crit) # on-hit effects land before damage, so a killing hit still ignites
 	e.take_damage(dmg, crit, dir * 110.0, "rivet")
 
 

@@ -12,6 +12,7 @@ const HOMING_TURN := PI # rad/s
 const HOMING_REACH := 6.0 * C.TILE
 
 var inventory: Inventory
+var effects: CombatEffects
 var dir := Vector2.RIGHT
 var depth := 1
 var homing := false
@@ -74,7 +75,7 @@ func _move(dist: float, can_hit: bool) -> void:
 			if e.dead:
 				exclude.append(hit.rid)
 				continue
-			inventory.on_shard_hit(e)
+			effects.on_shard_hit(e)
 			e.take_damage(DAMAGE, false, dir * 60.0, "shard", depth)
 			queue_free()
 			return

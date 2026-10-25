@@ -6,6 +6,7 @@ const ClinkerScript = preload("res://scripts/combat/enemies/clinker.gd")
 const ForgewardenScript = preload("res://scripts/combat/enemies/forgewarden.gd")
 const LinesmanScript = preload("res://scripts/combat/enemies/linesman.gd")
 const PlayerScript = preload("res://scripts/combat/player.gd")
+const CombatEffectsScript = preload("res://scripts/combat/combat_effects.gd")
 const RivetScript = preload("res://scripts/combat/projectiles/rivet.gd")
 const ShardScript = preload("res://scripts/combat/projectiles/shard.gd")
 const MoltenPatchScript = preload("res://scripts/combat/projectiles/molten_patch.gd")
@@ -228,15 +229,18 @@ func _combat_contracts() -> void:
 	check(game.touch.get_script() == TouchControlsScript and game.pause_menu.get_script() == PauseMenuScript and game.picker.get_script() == PickerScript, "RunGame wires the tested touch, pause, and picker scripts")
 	check(Juice.get_script() == JuiceScript and Sfx.get_script() == SfxScript, "Autoload services use the directly tested Juice and SFX scripts")
 	var heat_inventory := Inventory.new()
-	heat_inventory.player = player
 	heat_inventory.add("bellows_valve")
 	heat_inventory.add("feedback_coil")
+	var heat_effects := CombatEffectsScript.new()
+	heat_effects.inventory = heat_inventory
+	heat_effects.player = player
 	var arc_kill := EnemyScript.new()
 	arc_kill.last_kind = "arc"
 	player.vent_cd = 2.0
-	heat_inventory.on_kill(arc_kill)
+	heat_effects.on_kill(arc_kill)
 	check(is_equal_approx(player.vent_cd, 1.5), "Heat Engine refunds vent cooldown for arc kills through the shared kill hook")
 	heat_inventory.free()
+	heat_effects.free()
 	player.vent_cd = 0.0
 	arc_kill.free()
 	_dash_contracts(game)
@@ -277,7 +281,7 @@ func _combat_contracts() -> void:
 	survivor.set_physics_process(false)
 	game.world.add_child(survivor)
 	survivor.add_ignite(2, 10)
-	game.inventory.on_vent(0.0)
+	game.effects.on_vent(0.0)
 	check(is_equal_approx(survivor.hp, 80.0) and survivor.ignite_stacks == 0, "Feedback Coil consumes Ignite and deals its deterministic arc damage")
 	check(is_equal_approx(player.vent_cd, 3.0) and is_equal_approx(player.heat.value, 40.0), "Heat Engine sets Warm Heat but does not refund cooldown when an arc target survives")
 	survivor.remove_from_group("enemies")
@@ -291,7 +295,7 @@ func _combat_contracts() -> void:
 	game.world.add_child(doomed)
 	doomed.add_ignite(1, 10)
 	player.vent_cd = 3.0
-	game.inventory.on_vent(0.0)
+	game.effects.on_vent(0.0)
 	check(doomed.dead and doomed.ignite_stacks == 0 and is_equal_approx(player.vent_cd, 2.5), "Feedback Coil consumes Ignite and Heat Engine refunds half a second only when an arc kills")
 
 	var damage_sources: Array[String] = []

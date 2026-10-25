@@ -20,6 +20,7 @@ var camera: Camera2D
 var hud: Hud
 var director: Director
 var inventory: Inventory
+var effects: CombatEffects
 var picker: Picker
 var pause_menu: PauseMenu
 var touch: TouchControls
@@ -65,8 +66,13 @@ func _ready() -> void:
 	player.game = self
 	player.inventory = inventory
 	inventory.player = player
-	inventory.fx = fx
-	inventory.projectile_parent = world
+	effects = CombatEffects.new()
+	effects.inventory = inventory
+	effects.player = player
+	effects.fx = fx
+	effects.projectile_parent = world
+	add_child(effects)
+	player.effects = effects
 	world.add_child(player)
 	camera = Camera2D.new()
 	camera.ignore_rotation = false
@@ -81,7 +87,7 @@ func _ready() -> void:
 	player.died.connect(on_player_died)
 	player.vented.connect(hud.chromatic)
 	player.gauge_pulsed.connect(hud.pulse_gauge)
-	inventory.flares_detonated.connect(func() -> void: hud.dim(0.15))
+	effects.flares_detonated.connect(func() -> void: hud.dim(0.15))
 	director = Director.new()
 	director.game = self
 	director.enemy_defeated.connect(_on_enemy_defeated)
@@ -229,7 +235,7 @@ func _process(delta: float) -> void:
 
 
 func _on_enemy_defeated(e: Enemy) -> void:
-	inventory.on_kill(e)
+	effects.on_kill(e)
 	on_enemy_killed(e)
 	if e.elite:
 		on_elite_killed(e)

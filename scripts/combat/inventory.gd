@@ -1,18 +1,14 @@
 class_name Inventory
 extends Node
-## Owned items, Resonance and Fusions, plus the trigger hooks that give items their behaviour.
-## Player, Rivet, Shard and Enemy call the on_* hooks; stat getters feed back into their numbers.
+## Owned items, Resonance and Fusions: ownership, offers, tempering and fusion eligibility,
+## plus the stat getters combat code queries. Live item triggers and projectile spawning
+## live in CombatEffects, which reads this inventory to decide what owning an item does.
 
 signal changed
 signal fusion_unlocked(id: String)
 signal absolved(id: String)
-signal flares_detonated
 
-const SHARD_DEPTH_CAP := 2 # shards spawned by shard kills stop cascading after this
-
-var player: Player
-var fx: Fx
-var projectile_parent: Node2D
+var player: Player # only needed to heal on a Patch Kit pickup
 var run_active := true
 var owned: Array[String] = []
 var fusions: Array[String] = []
@@ -22,7 +18,6 @@ var absolution := {} # slagged id -> progress toward its Absolution goal
 var absolved_ids: Array[String] = []
 var tempered: Array[String] = [] # items upgraded at the Anvil
 var forged := {} # fusion id -> the ingredient a Forced Fusion stood in for
-var _static_hits := 0
 
 
 ## A Forced Fusion's stand-in counts as owning the missing ingredient's behaviour too.
@@ -249,20 +244,16 @@ func active_risks() -> Array[String]:
 	return out
 
 
-func _process(delta: float) -> void:
-	if cursed("feral_valve") and player != null and player.heat.band == Heat.Band.HOT and run_active:
-		_progress("feral_valve", delta)
-
-
 func on_room_clear(clean: bool) -> void:
 	if cursed("brittle_crown"):
 		if clean:
-			_progress("brittle_crown", 1.0)
+			progress_absolution("brittle_crown", 1.0)
 		else:
 			absolution["brittle_crown"] = 0.0
 
 
-func _progress(id: String, amount: float) -> void:
+## Advances a Slagged item's Absolution goal; CombatEffects calls this from its own triggers too.
+func progress_absolution(id: String, amount: float) -> void:
 	absolution[id] = absolution.get(id, 0.0) + amount
 	if absolution[id] >= ItemDB.ITEMS[id].goal:
 		absolved_ids.append(id)
@@ -304,172 +295,3 @@ func arc_targets(base: int) -> int:
 
 func shard_count(base: int) -> int:
 	return base + (2 if resonance("shrapnel") else 0)
-
-
-# ---------------------------------------------------------------- hooks
-
-func on_rivet_hit(e: Enemy, rivet: Rivet, crit: bool) -> void:
-	if has("bellows_valve") and player.heat.band >= Heat.Band.WARM:
-		proc_bonus = minf(0.2, proc_bonus + 0.02)
-	var times := 2 if crit and has("cinder_lens") else 1
-	for i in times:
-		_apply_on_hit(e, rivet.overdrive)
-	if has("static_rivets"):
-		_static_hits += 1
-		if _static_hits % (3 if is_tempered("static_rivets") else 5) == 0:
-			radial_arcs(e.global_position, arc_targets(2), 3.0 * C.TILE, 8.0, e)
-
-
-func on_shard_hit(e: Enemy) -> void:
-	if has("cluster_embers"):
-		e.add_ignite(1, ignite_cap())
-	if randf() < proc_chance():
-		_apply_on_hit(e, false)
-
-
-func _apply_on_hit(e: Enemy, hot: bool) -> void:
-	if has("tinder_rounds"):
-		e.add_ignite(1, ignite_cap())
-	if has("pyre_coating") and hot:
-		e.add_ignite(3 if is_tempered("pyre_coating") else 2, ignite_cap())
-
-
-func on_kill(e: Enemy) -> void:
-	var pos := e.global_position
-	if e.last_kind == "arc" and has("heat_engine"):
-		player.refund_vent_cooldown(0.5)
-	if e.last_kind == "vent" and cursed("hungry_coal"):
-		_progress("hungry_coal", 1.0)
-	if has("tinder_rounds") and e.ignite_stacks > 1:
-		var share := e.ignite_stacks / 2
-		var reach := (2.5 if is_tempered("tinder_rounds") else 1.5) * C.TILE
-		fx.ring(pos, reach, Color(1, 0.5, 0.15, 0.8), 0.2)
-		for o in _enemies_near(pos, reach):
-			o.add_ignite(share, ignite_cap())
-	if has("frag_lattice") and e.last_depth < SHARD_DEPTH_CAP:
-		var n := shard_count(6 if is_tempered("frag_lattice") else 4)
-		for i in n:
-			var ang := PI / 4.0 + i * PI / 2.0 if i < 4 else randf() * TAU
-			spawn_shard(pos, Vector2.from_angle(ang), e.last_depth + 1)
-		Sfx.play_ramp("burst", -8.0)
-
-
-func on_wall_stop(pos: Vector2, normal: Vector2) -> void:
-	if not has("splinter_heads"):
-		return
-	var spread: Array = [-0.6, -0.3, 0.0, 0.3, 0.6] if is_tempered("splinter_heads") else [-0.5, 0.0, 0.5]
-	for a: float in spread:
-		spawn_shard(pos + normal * 4.0, normal.rotated(a), 1)
-
-
-func on_overheat() -> void:
-	if not has("pyre_coating"):
-		return
-	var p: Player = player
-	var big := is_tempered("pyre_coating")
-	var reach := (5.0 if big else 4.0) * C.TILE
-	for o in _enemies_near(p.global_position, reach):
-		o.add_ignite(5 if big else 3, ignite_cap())
-	fx.ring(p.global_position, reach, Color(1, 0.45, 0.1), 0.3)
-
-
-## Called after the nova and rivet bursts have resolved.
-func on_vent(_amount: float) -> void:
-	proc_bonus = 0.0
-	var p: Player = player
-	if has("firestorm_lattice"):
-		_detonate_flares()
-	if has("feedback_coil"):
-		var cands: Array = _enemies_near(p.global_position, 8.0 * C.TILE)
-		cands.sort_custom(func(a: Enemy, b: Enemy) -> bool:
-			if a.ignite_stacks != b.ignite_stacks:
-				return a.ignite_stacks > b.ignite_stacks
-			return a.global_position.distance_to(p.global_position) < b.global_position.distance_to(p.global_position))
-		var big := is_tempered("feedback_coil")
-		var n := mini(arc_targets(5 if big else 3), cands.size())
-		for i in n:
-			var e: Enemy = cands[i]
-			if e.dead:
-				continue
-			var dmg := (14.0 if big else 10.0) + 5.0 * e.ignite_stacks
-			e.clear_ignite()
-			fx.arc(p.global_position, e.global_position)
-			e.take_damage(dmg, false, Vector2.ZERO, "arc")
-		if n > 0:
-			Sfx.play("zap", 0.0, -4.0)
-	if has("heat_engine"):
-		p.heat.set_value(40.0)
-
-
-func radial_arcs(from: Vector2, count: int, reach: float, dmg: float, skip: Enemy) -> void:
-	var cands: Array = _enemies_near(from, reach)
-	cands.erase(skip)
-	cands.sort_custom(func(a: Enemy, b: Enemy) -> bool:
-		return a.global_position.distance_to(from) < b.global_position.distance_to(from))
-	for i in mini(count, cands.size()):
-		var e: Enemy = cands[i]
-		fx.arc(from, e.global_position)
-		e.take_damage(dmg, false, Vector2.ZERO, "arc")
-	if not cands.is_empty():
-		Sfx.play("zap", 3.0, -8.0)
-
-
-func spawn_shard(pos: Vector2, dir: Vector2, depth: int) -> void:
-	if dir.is_zero_approx() or not dir.is_finite():
-		return
-	var s := Shard.new()
-	s.inventory = self
-	s.position = pos
-	s.dir = dir.normalized()
-	s.depth = depth
-	s.homing = has("cluster_embers")
-	s.flare = has("firestorm_lattice")
-	s.speed_mult = projectile_speed_mult()
-	projectile_parent.add_child(s)
-
-
-func _detonate_flares() -> void:
-	var flares := get_tree().get_nodes_in_group("flares")
-	if flares.is_empty():
-		return
-	var pts: Array[Vector2] = []
-	for f in flares:
-		pts.append(f.global_position)
-		f.remove_from_group("flares")
-		f.queue_free()
-	var hit := {}
-	# Each flare bursts.
-	for pt in pts:
-		fx.rivet_burst(pt, 1)
-		for o in _enemies_near(pt, C.TILE):
-			o.take_damage(12.0, false, Vector2.ZERO, "flare")
-	# Lightning web between flares within 4 tiles: damages everything it crosses.
-	for i in pts.size():
-		for j in range(i + 1, pts.size()):
-			var a := pts[i]
-			var b := pts[j]
-			if a.distance_to(b) > 4.0 * C.TILE:
-				continue
-			fx.arc(a, b, 0.35)
-			for o in get_tree().get_nodes_in_group("enemies"):
-				var en: Enemy = o
-				if en.dead or hit.has(en):
-					continue
-				var closest := Geometry2D.get_closest_point_to_segment(en.global_position, a, b)
-				if closest.distance_to(en.global_position) <= en.radius + 10.0:
-					hit[en] = true
-					en.take_damage(12.0, false, Vector2.ZERO, "arc")
-	flares_detonated.emit()
-	Juice.hitstop(8)
-	Juice.add_trauma(0.4)
-	Sfx.play("zap", -5.0, 0.0)
-	Sfx.play("fusion", 5.0, -6.0)
-
-
-func _enemies_near(pos: Vector2, reach: float) -> Array[Enemy]:
-	var out: Array[Enemy] = []
-	for o in get_tree().get_nodes_in_group("enemies"):
-		var e: Enemy = o
-		if not e.dead and e.global_position.distance_to(pos) <= reach + e.radius:
-			out.append(e)
-	return out
