@@ -25,6 +25,7 @@ func _ready() -> void:
 ## semitones shifts pitch; db is a volume offset.
 func play(sound: String, semitones := 0.0, db := 0.0) -> void:
 	if not streams.has(sound):
+		push_warning("Sfx: unknown sound %s" % sound)
 		return
 	var stream: AudioStream = streams[sound]
 	var same := 0
