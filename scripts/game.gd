@@ -302,8 +302,7 @@ func _give_reward() -> void:
 		"combat_item":
 			picker.open(Picker.items(inventory.offer(3), inventory, "CHOOSE A SALVAGE", _claim_reward))
 		"combat_conductor":
-			var conductors := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword == "conductor"
-			var opts := inventory.offer(3, conductors)
+			var opts := inventory.offer(3, ItemDB.is_conductor)
 			if opts.is_empty():
 				opts.append("patch_kit") # every Conductor is owned
 			picker.open(Picker.items(opts, inventory, "CHOOSE A CONDUCTOR", _claim_reward))

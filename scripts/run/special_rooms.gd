@@ -21,9 +21,8 @@ func setup(kind: String) -> void:
 	match kind:
 		"shop":
 			var stock: Array[String] = []
-			var conductors := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword == "conductor"
-			stock.append_array(game.inventory.offer(1, conductors))
-			var others := func(id: String) -> bool: return ItemDB.ITEMS[id].keyword != "conductor"
+			stock.append_array(game.inventory.offer(1, ItemDB.is_conductor))
+			var others := func(id: String) -> bool: return not ItemDB.is_conductor(id)
 			stock.append_array(game.inventory.offer(3, others, stock))
 			for i in stock.size():
 				_item_pedestal(stock[i], Vector2((6 + i * 4) * t, 6 * t))

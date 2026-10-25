@@ -140,6 +140,8 @@ const PATCH_KIT := {
 }
 
 
+## These item-id lookups index ITEMS directly: callers always pass a real owned/catalogued
+## id, so an unknown one is a data bug that should fail loudly rather than return a guess.
 static func get_item(id: String) -> Dictionary:
 	if id == "patch_kit":
 		return PATCH_KIT
@@ -150,6 +152,10 @@ static func is_slagged(id: String) -> bool:
 	return id != "patch_kit" and ITEMS[id].keyword == "slagged"
 
 
+static func is_conductor(id: String) -> bool:
+	return ITEMS[id].keyword == "conductor"
+
+
 static func price(id: String) -> int:
 	var item: Dictionary = get_item(id)
 	if item.keyword == "conductor":
@@ -157,5 +163,8 @@ static func price(id: String) -> int:
 	return PRICE.get(item.rarity, 100)
 
 
+## Unlike the id lookups above, this takes a bare keyword string from UI/text-rendering
+## contexts (Resonance labels, Codex categories) where an unrecognized keyword should
+## degrade to a neutral color instead of crashing the display.
 static func keyword_color(kw: String) -> Color:
 	return KEYWORD_COLORS.get(kw, Color.WHITE)
