@@ -67,6 +67,9 @@ func reset() -> void:
 	_hitstop_until_ms = 0
 	_slow_until_ms = 0
 	_punch = 0.0
+	_last_start_ms = -100000
+	_window_start_ms = 0
+	_window_used = 0
 	Engine.time_scale = 1.0
 
 
