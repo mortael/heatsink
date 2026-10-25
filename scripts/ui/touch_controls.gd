@@ -67,7 +67,7 @@ func _input(event: InputEvent) -> void:
 		else:
 			_touch_up(event.index)
 		view.queue_redraw()
-	elif event is InputEventScreenDrag and active:
+	elif event is InputEventScreenDrag and active and not game.picker.is_open and not game.pause_menu.is_open:
 		if event.index == _move_id:
 			_move_origin = _follow(event.position, _move_origin)
 			_move_vec = (event.position - _move_origin) / STICK_R
@@ -82,11 +82,12 @@ func _input(event: InputEvent) -> void:
 ## Restarting reloads the scene and frees this node, so let go of every action it may
 ## still hold; otherwise "restart" stays pressed and the next tap can't trigger it.
 func _exit_tree() -> void:
-	_release_all()
+	suspend()
 
 
-## Lets go of the sticks and buttons, e.g. before the pause menu opens over them.
-func _release_all() -> void:
+## Lets go of the sticks and buttons and clears tracked touches; RunGame connects this to
+## every overlay's opened signal (Picker, PauseMenu) so none of them inherit held input.
+func suspend() -> void:
 	for action in ["restart", "fire", "move_left", "move_right", "move_up", "move_down"]:
 		Input.action_release(action)
 	for action in _button_ids.values():
@@ -122,7 +123,6 @@ func _touch_down(index: int, pos: Vector2) -> void:
 		return # those menus read the emulated mouse click
 	if pos.distance_to(PAUSE_POS) <= PAUSE_R * 1.5:
 		if game.can_pause():
-			_release_all()
 			game.pause_menu.open()
 		return
 	for b in BUTTONS:

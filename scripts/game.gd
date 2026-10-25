@@ -104,6 +104,8 @@ func _ready() -> void:
 	touch = TouchControls.new()
 	touch.game = self
 	touch.aim_changed.connect(player.set_aim_input)
+	picker.opened.connect(touch.suspend)
+	pause_menu.opened.connect(touch.suspend)
 	add_child(touch)
 	run = RunMap.new(randi())
 	_build_room("combat_item")

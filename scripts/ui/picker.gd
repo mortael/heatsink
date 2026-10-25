@@ -5,6 +5,7 @@ extends CanvasLayer
 ## Choosing emits the card's id; backing out emits "".
 
 signal chosen(id: String)
+signal opened
 
 class Offer extends RefCounted:
 	var options: Array[String] = []
@@ -54,6 +55,7 @@ func open(offer: Offer) -> void:
 	get_tree().paused = true
 	Sfx.play("band", 7.0, -6.0)
 	view.queue_redraw()
+	opened.emit()
 
 
 func choose(i: int) -> void:

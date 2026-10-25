@@ -2,6 +2,8 @@ class_name PauseMenu
 extends CanvasLayer
 ## Esc (or Start on a pad) mid-run: Resume, Codex, Settings, Main menu. Pauses the game while open.
 
+signal opened
+
 const MENU_SCENE := "res://menu.tscn"
 
 var game: RunGame
@@ -86,6 +88,7 @@ func open() -> void:
 	get_tree().paused = true
 	Sfx.play("band", 3.0, -6.0)
 	resume_button.grab_focus()
+	opened.emit()
 
 
 func close() -> void:
