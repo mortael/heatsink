@@ -37,11 +37,21 @@ def main() -> int:
         environment["XDG_DATA_HOME"] = user_data
         environment["HEATSINK_TEST_DATA"] = user_data
         try:
-            return subprocess.run(command, cwd=project, env=environment,
-                                  timeout=args.timeout, check=False).returncode
-        except subprocess.TimeoutExpired:
+            result = subprocess.run(command, cwd=project, env=environment, timeout=args.timeout,
+                                    check=False, capture_output=True, text=True)
+        except subprocess.TimeoutExpired as exc:
+            sys.stdout.write(exc.stdout or "")
+            sys.stderr.write(exc.stderr or "")
             print(f"Test exceeded {args.timeout:g} seconds: {args.scene}", file=sys.stderr)
             return 124
+        sys.stdout.write(result.stdout)
+        sys.stderr.write(result.stderr)
+        # A caught check() failure sets a nonzero exit code itself; an uncaught runtime error
+        # (a null reference, a bad cast) does not, so Godot can exit 0 with real bugs logged.
+        if result.returncode == 0 and ("SCRIPT ERROR" in result.stdout or "SCRIPT ERROR" in result.stderr):
+            print(f"Godot logged a runtime SCRIPT ERROR; treating as a failure: {args.scene}", file=sys.stderr)
+            return 1
+        return result.returncode
 
 
 if __name__ == "__main__":
