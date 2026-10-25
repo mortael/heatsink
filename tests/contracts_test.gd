@@ -689,7 +689,7 @@ func _world_interaction_contracts(game: RunGame) -> void:
 	game.scrap = 3
 	check(not pedestal.affordable(), "Pedestal rejects purchases below its Scrap price")
 	var door: Door = DoorScript.new()
-	door.game = game
+	door.player = game.player
 	game.world.add_child(door)
 	check(is_equal_approx(door._neon_level(), 0.5), "Closed Door uses its dim sealed-light level")
 	door.open = true

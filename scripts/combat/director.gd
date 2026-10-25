@@ -19,7 +19,11 @@ const WAVE_TIMEOUT := 8.0
 const SPAWN_RETRY_TIME := 0.5
 const LINESMAN_FROM := 3 # first room index that can roll a Linesman
 
-var game: RunGame
+var game: RunGame # only for the terminal dead check and handing spawned Enemies their run
+var room: Room
+var player: Player
+var fx: Fx
+var spawn_parent: Node2D
 var room_index := 0
 var budget := 0
 var waves: Array = [] # each: Array of unit names
@@ -122,7 +126,7 @@ func _spawn_wave() -> void:
 			if c.is_finite():
 				for tries in 10:
 					var cand := c + Vector2.from_angle(randf() * TAU) * randf_range(0.0, 1.5 * C.TILE)
-					if game.room.is_open(cand, 20.0) and cand.distance_to(game.player.global_position) >= MIN_SPAWN_DIST:
+					if room.is_open(cand, 20.0) and cand.distance_to(player.global_position) >= MIN_SPAWN_DIST:
 						pos = cand
 						break
 		if not _portal(pos, u):
@@ -139,10 +143,10 @@ func _retry_spawns() -> void:
 
 
 func _spawn_point(min_tiles := 3.0) -> Vector2:
-	var p: Vector2 = game.room.random_open_point(30.0, game.player.global_position, (min_tiles + 2.0) * C.TILE)
+	var p: Vector2 = room.random_open_point(30.0, player.global_position, (min_tiles + 2.0) * C.TILE)
 	if p.is_finite():
 		return p
-	return game.room.random_open_point(30.0, game.player.global_position, MIN_SPAWN_DIST)
+	return room.random_open_point(30.0, player.global_position, MIN_SPAWN_DIST)
 
 
 func _portal(pos: Vector2, unit: String) -> bool:
@@ -152,7 +156,7 @@ func _portal(pos: Vector2, unit: String) -> bool:
 	var cost := _cost([unit])
 	pending += 1
 	pending_tp += cost
-	game.fx.portal(pos, PORTAL_TIME)
+	fx.portal(pos, PORTAL_TIME)
 	Sfx.play("portal", randf_range(-2.0, 2.0) - (6.0 if unit == "forgewarden" else 0.0), -12.0)
 	# A Timer child dies with the director, so a restart mid-portal can't spawn into a freed scene.
 	var t := Timer.new()
@@ -178,7 +182,7 @@ func _portal(pos: Vector2, unit: String) -> bool:
 		if e is Forgewarden:
 			e.armour_broken.connect(armour_broken.emit)
 		e.position = pos
-		game.world.add_child(e))
+		spawn_parent.add_child(e))
 	t.start()
 	return true
 

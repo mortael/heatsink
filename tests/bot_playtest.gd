@@ -68,7 +68,7 @@ func _ready() -> void:
 		anvil.kind = "anvil"
 		anvil.position = game.player.position
 		game.world.add_child(anvil)
-		game.pedestals.append(anvil)
+		game.special_rooms.pedestals.append(anvil)
 		game.use_pedestal(anvil)
 
 
@@ -267,7 +267,7 @@ func _explore(p: Player) -> void:
 
 func _make_plan(p: Player) -> Array:
 	var out: Array = []
-	var peds: Array = game.pedestals
+	var peds: Array = game.special_rooms.pedestals
 	match game.room_kind:
 		"shop":
 			var items := peds.filter(func(q: Pedestal) -> bool: return q.kind == "item")
@@ -379,7 +379,7 @@ func _room_shot(p: Player) -> void:
 	if kind == "elite" and frames - room_seen_at == 70:
 		_save("elite_room")
 	# Stand next to a pedestal long enough to see its card.
-	for ped: Pedestal in game.pedestals:
+	for ped: Pedestal in game.special_rooms.pedestals:
 		if ped.near and ped.kind == "item" and not room_shots.has("shop_card"):
 			_save("shop_card")
 

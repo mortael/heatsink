@@ -39,7 +39,6 @@ var elites_killed := 0
 var room_kind := ""
 var took_damage_this_room := false
 var doors: Array[Door] = []
-var pedestals: Array[Pedestal] = []
 
 var _transition := 0.0 # counts down while the screen is dark between rooms
 var _next_kind := ""
@@ -90,6 +89,9 @@ func _ready() -> void:
 	effects.flares_detonated.connect(func() -> void: hud.dim(0.15))
 	director = Director.new()
 	director.game = self
+	director.player = player
+	director.fx = fx
+	director.spawn_parent = world
 	director.enemy_defeated.connect(_on_enemy_defeated)
 	director.armour_broken.connect(_on_armour_broken)
 	director.room_cleared.connect(on_room_cleared)
@@ -126,7 +128,7 @@ func can_pause() -> bool:
 # ---------------------------------------------------------------- rooms
 
 func take_door(door: Door) -> void:
-	if in_transition() or not door.open:
+	if dead or in_transition() or not door.open:
 		return
 	_next_kind = door.kind
 	_transition = TRANSITION_TIME
@@ -145,11 +147,12 @@ func _build_room(kind: String) -> void:
 			c.queue_free()
 	fx.clear()
 	doors.clear()
-	pedestals.clear()
+	special_rooms.pedestals.clear()
 	room_kind = kind
 	run.enter(kind)
 	took_damage_this_room = false
 	room = Room.new(_pick_layout(kind))
+	director.room = room
 	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
 	world.add_child(room)
 	world.move_child(room, 0)
@@ -158,9 +161,10 @@ func _build_room(kind: String) -> void:
 	player.invuln = maxf(player.invuln, 0.5)
 	for i in run.exits.size():
 		var d := Door.new()
-		d.game = self
+		d.player = player
 		d.kind = run.exits[i]
-		d.slot = _door_slot(i, run.exits.size())
+		d.position = room.door_point(_door_slot(i, run.exits.size()))
+		d.traversal_requested.connect(take_door)
 		world.add_child(d)
 		doors.append(d)
 	var info: Dictionary = RunMap.KINDS[kind]
@@ -228,7 +232,7 @@ func _process(delta: float) -> void:
 		if _reward_timer <= 0.0:
 			_give_reward()
 	if not dead and player.interact_pressed():
-		for p in pedestals:
+		for p in special_rooms.pedestals:
 			if p.near:
 				use_pedestal(p)
 				break
@@ -336,6 +340,14 @@ func add_scrap(amount: int, show: bool) -> void:
 	scrap += amount
 	if show:
 		fx.number(player.global_position + Vector2(0, -30), amount, false, Color(1, 0.85, 0.35), 16)
+
+
+func spend_scrap(amount: int) -> void:
+	scrap -= amount
+
+
+func spend_cores(amount: int) -> void:
+	cores -= amount
 
 
 # ---------------------------------------------------------------- picker

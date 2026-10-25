@@ -29,9 +29,9 @@ func _special_room_transaction_contracts() -> void:
 	shop_game.player.set_physics_process(false)
 	shop_game.director.set_physics_process(false)
 	shop_game.scrap = 1000
-	var shop_start := shop_game.pedestals.size()
+	var shop_start := shop_game.special_rooms.pedestals.size()
 	shop_game.special_rooms.setup("shop")
-	var shop_stock: Array[Pedestal] = shop_game.pedestals.slice(shop_start)
+	var shop_stock: Array[Pedestal] = shop_game.special_rooms.pedestals.slice(shop_start)
 	var purchased: Pedestal = shop_stock.filter(func(p: Pedestal) -> bool: return p.kind == "item")[0]
 	shop_game.special_rooms.use_pedestal(purchased)
 	var purchase_id := purchased.item_id
@@ -43,9 +43,9 @@ func _special_room_transaction_contracts() -> void:
 	scrap_before_reroll = shop_game.scrap
 	shop_game.special_rooms.use_pedestal(reroll)
 	check(shop_game.scrap == scrap_before_reroll - (SpecialRooms.REROLL_PRICE + SpecialRooms.REROLL_STEP) and reroll.price == SpecialRooms.REROLL_PRICE + 2 * SpecialRooms.REROLL_STEP, "Each later reroll charges the updated price exactly once")
-	var wager_start := shop_game.pedestals.size()
+	var wager_start := shop_game.special_rooms.pedestals.size()
 	shop_game.special_rooms.setup("wager")
-	var wager_stock: Array[Pedestal] = shop_game.pedestals.slice(wager_start)
+	var wager_stock: Array[Pedestal] = shop_game.special_rooms.pedestals.slice(wager_start)
 	var coin: Pedestal = wager_stock.filter(func(p: Pedestal) -> bool: return p.kind == "coinflip")[0]
 	shop_game.player.max_pips = 1
 	shop_game.player.pips = 1
@@ -59,9 +59,9 @@ func _special_room_transaction_contracts() -> void:
 	check(shop_game.player.max_pips == 5 and shop_game.player.pips == 4, "Reusing a resolved coin wager cannot charge plating again")
 	if shop_game.picker.is_open:
 		shop_game.picker.cancel()
-	var crucible_start := shop_game.pedestals.size()
+	var crucible_start := shop_game.special_rooms.pedestals.size()
 	shop_game.special_rooms.setup("wager")
-	var crucible: Pedestal = shop_game.pedestals.slice(crucible_start).filter(func(p: Pedestal) -> bool: return p.kind == "crucible")[0]
+	var crucible: Pedestal = shop_game.special_rooms.pedestals.slice(crucible_start).filter(func(p: Pedestal) -> bool: return p.kind == "crucible")[0]
 	for id: String in ItemDB.ITEMS:
 		if ItemDB.is_slagged(id):
 			shop_game.inventory.add(id)
@@ -80,9 +80,9 @@ func _special_room_transaction_contracts() -> void:
 	bath_game.player.set_physics_process(false)
 	bath_game.director.set_physics_process(false)
 	bath_game.player.pips = 2
-	var vault_start := bath_game.pedestals.size()
+	var vault_start := bath_game.special_rooms.pedestals.size()
 	bath_game.special_rooms.setup("vault")
-	var vault: Array[Pedestal] = bath_game.pedestals.slice(vault_start)
+	var vault: Array[Pedestal] = bath_game.special_rooms.pedestals.slice(vault_start)
 	var bath: Pedestal = vault.filter(func(p: Pedestal) -> bool: return p.kind == "vault_repair")[0]
 	var anvil: Pedestal = vault.filter(func(p: Pedestal) -> bool: return p.kind == "anvil")[0]
 	bath_game.special_rooms.use_pedestal(bath)
@@ -97,9 +97,9 @@ func _special_room_transaction_contracts() -> void:
 	anvil_game.director.set_physics_process(false)
 	anvil_game.inventory.add("tinder_rounds")
 	anvil_game.cores = 1
-	vault_start = anvil_game.pedestals.size()
+	vault_start = anvil_game.special_rooms.pedestals.size()
 	anvil_game.special_rooms.setup("vault")
-	vault = anvil_game.pedestals.slice(vault_start)
+	vault = anvil_game.special_rooms.pedestals.slice(vault_start)
 	bath = vault.filter(func(p: Pedestal) -> bool: return p.kind == "vault_repair")[0]
 	anvil = vault.filter(func(p: Pedestal) -> bool: return p.kind == "anvil")[0]
 	anvil_game.special_rooms.use_pedestal(anvil)
@@ -124,7 +124,7 @@ func _wager_game() -> RunGame:
 func _coin_outcomes() -> void:
 	for roll: float in [0.0, 0.9]:
 		var game := _wager_game()
-		var coin: Pedestal = game.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "coinflip")[0]
+		var coin: Pedestal = game.special_rooms.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "coinflip")[0]
 		game.player.max_pips = 6
 		game.player.pips = 6
 		game.special_rooms.use_pedestal(coin, roll)
@@ -150,7 +150,7 @@ func _coin_outcomes() -> void:
 	for id: String in ItemDB.ITEMS:
 		if ItemDB.ITEMS[id].rarity == "Rare":
 			exhausted.inventory.add(id)
-	var coin: Pedestal = exhausted.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "coinflip")[0]
+	var coin: Pedestal = exhausted.special_rooms.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "coinflip")[0]
 	exhausted.special_rooms.use_pedestal(coin, 0.0)
 	check(coin.active and exhausted.player.max_pips == 6 and not exhausted.picker.is_open, "A coin refuses an exhausted Rare pool without charging plating")
 	exhausted.queue_free()
@@ -161,7 +161,7 @@ func _crucible_outcomes() -> void:
 	for outcome: Dictionary in [{"roll": 0.0, "kind": "upgrade"}, {"roll": 0.6, "kind": "transmute"}, {"roll": 0.9, "kind": "slagged"}]:
 		var game := _wager_game()
 		game.inventory.add("tinder_rounds")
-		var crucible: Pedestal = game.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "crucible")[0]
+		var crucible: Pedestal = game.special_rooms.pedestals.filter(func(p: Pedestal) -> bool: return p.kind == "crucible")[0]
 		game.special_rooms.use_pedestal(crucible)
 		game.picker.cancel()
 		check(game.inventory.owned == ["tinder_rounds"] and crucible.active and not get_tree().paused, "Cancelling the Crucible preserves its item and leaves the offer usable")

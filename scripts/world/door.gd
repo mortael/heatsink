@@ -6,9 +6,10 @@ extends Node2D
 ## a glow that spills onto the floor in front of it (drawn, not a Light2D: lights that stay on all
 ## the time are the expensive kind on phones).
 
-var game: RunGame
+signal traversal_requested(door: Door)
+
+var player: Player
 var kind := "combat_item"
-var slot := 0
 var open := false
 var _glow := 0.0
 var _neon: Node2D
@@ -25,7 +26,6 @@ func _init() -> void:
 
 func _ready() -> void:
 	z_index = 1
-	position = game.room.door_point(slot)
 
 
 func _process(delta: float) -> void:
@@ -34,10 +34,8 @@ func _process(delta: float) -> void:
 		_flicker = 0.6
 	_was_open = open
 	_flicker = maxf(0.0, _flicker - delta)
-	if open and not game.dead and not game.in_transition():
-		var p: Player = game.player
-		if absf(p.global_position.x - global_position.x) < C.TILE * 0.9 and p.global_position.y < global_position.y + Player.RADIUS + 4.0:
-			game.take_door(self)
+	if open and absf(player.global_position.x - global_position.x) < C.TILE * 0.9 and player.global_position.y < global_position.y + Player.RADIUS + 4.0:
+		traversal_requested.emit(self)
 	queue_redraw()
 	_neon.queue_redraw()
 

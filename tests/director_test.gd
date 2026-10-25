@@ -29,6 +29,8 @@ func _ready() -> void:
 	game.world.add_child(game.fx)
 	var director := PlacementDirector.new()
 	director.game = game
+	director.fx = game.fx
+	director.spawn_parent = game.world
 	director.set_physics_process(false)
 	add_child(director)
 	var clears: Array[float] = []

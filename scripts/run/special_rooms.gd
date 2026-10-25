@@ -8,6 +8,7 @@ const REROLL_STEP := 10
 const ALTAR_CHANCE := 1.0 / 3.0 # Altars sit in 1 of every 3 Cooling Vaults (GDD section 4)
 
 var game: RunGame
+var pedestals: Array[Pedestal] = []
 var _reroll_price := REROLL_PRICE
 
 
@@ -51,7 +52,7 @@ func _pedestal(kind: String, pos: Vector2, title: String, lines: Array[String], 
 	p.lines = lines
 	p.color = color
 	game.world.add_child(p)
-	game.pedestals.append(p)
+	pedestals.append(p)
 	return p
 
 
@@ -73,7 +74,7 @@ func use_pedestal(p: Pedestal, coin_roll := -1.0) -> void:
 		return
 	match p.kind:
 		"item":
-			game.scrap -= p.price
+			game.spend_scrap(p.price)
 			game.inventory.add(p.item_id)
 			p.active = false
 			_buy_fx(p)
@@ -81,14 +82,14 @@ func use_pedestal(p: Pedestal, coin_roll := -1.0) -> void:
 			if game.player.pips >= game.player.max_pips:
 				game.hud.banner("PLATING IS FULL")
 				return
-			game.scrap -= p.price
+			game.spend_scrap(p.price)
 			game.player.repair(1)
 			_buy_fx(p)
 		"reroll":
-			if not game.pedestals.any(func(q: Pedestal) -> bool: return q.kind == "item" and q.active and q.item_id != "patch_kit"):
+			if not pedestals.any(func(q: Pedestal) -> bool: return q.kind == "item" and q.active and q.item_id != "patch_kit"):
 				game.hud.banner("NOTHING TO REROLL")
 				return
-			game.scrap -= p.price
+			game.spend_scrap(p.price)
 			_reroll_price += REROLL_STEP
 			p.price = _reroll_price
 			_reroll_shop()
@@ -201,7 +202,7 @@ func _complete_coin(id: String) -> void:
 
 
 func _vault_choice(chosen: Pedestal, kinds: Array[String]) -> void:
-	for p in game.pedestals:
+	for p in pedestals:
 		if kinds.has(p.kind):
 			p.active = false
 	Sfx.play("vent", 6.0, -6.0)
@@ -210,18 +211,18 @@ func _vault_choice(chosen: Pedestal, kinds: Array[String]) -> void:
 
 func use_anvil(choice: String) -> void:
 	var anvil: Pedestal = null
-	for p in game.pedestals:
+	for p in pedestals:
 		if p.kind == "anvil":
 			anvil = p
 	var parts := choice.split(":")
 	if parts.size() != 2:
 		return
 	if parts[0] == "temper" and game.cores >= ItemDB.TEMPER_COST and game.inventory.temperable().has(parts[1]):
-		game.cores -= ItemDB.TEMPER_COST
+		game.spend_cores(ItemDB.TEMPER_COST)
 		game.inventory.temper(parts[1])
 		game.hud.banner("TEMPERED: " + ItemDB.ITEMS[parts[1]].name.to_upper(), ItemDB.TEMPER[parts[1]])
 	elif parts[0] == "forge" and game.cores >= ItemDB.FORGE_COST and game.inventory.forgeable().has(parts[1]):
-		game.cores -= ItemDB.FORGE_COST
+		game.spend_cores(ItemDB.FORGE_COST)
 		game.inventory.force_fusion(parts[1])
 	else:
 		return
@@ -231,7 +232,7 @@ func use_anvil(choice: String) -> void:
 	if anvil != null:
 		game.fx.sparks(anvil.global_position + Vector2(0, -12), Vector2.UP, 16, Color(1, 0.8, 0.4))
 		# Using the Anvil sends the Bath cold; the Anvil stays hot while you have Cores to spend.
-		for p in game.pedestals:
+		for p in pedestals:
 			if p.kind == "vault_repair":
 				p.active = false
 
@@ -243,10 +244,10 @@ func _buy_fx(p: Pedestal) -> void:
 
 func _reroll_shop() -> void:
 	var shown: Array[String] = []
-	for p in game.pedestals:
+	for p in pedestals:
 		if p.kind == "item" and p.active:
 			shown.append(p.item_id)
-	for p in game.pedestals.duplicate():
+	for p in pedestals.duplicate():
 		if p.kind != "item" or not p.active:
 			continue
 		var want_conductor: bool = p.item_id != "patch_kit" and ItemDB.ITEMS[p.item_id].keyword == "conductor"
@@ -256,7 +257,7 @@ func _reroll_shop() -> void:
 			continue # nothing new of this kind left: keep what is on show
 		shown.append(pick[0])
 		var pos: Vector2 = p.position
-		game.pedestals.erase(p)
+		pedestals.erase(p)
 		p.queue_free()
 		_item_pedestal(pick[0], pos)
 
@@ -286,7 +287,7 @@ func feed_crucible(id: String, roll := randf()) -> void:
 				if ItemDB.is_slagged(o) and not game.inventory.owned.has(o):
 					picks.append(o)
 			picks.shuffle()
-	for p in game.pedestals:
+	for p in pedestals:
 		if p.kind == "crucible":
 			p.active = false
 	if picks.is_empty():
