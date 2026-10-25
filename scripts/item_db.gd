@@ -24,6 +24,8 @@ const RESONANCE := {
 	"ricochet": "All rivets ricochet +1 time",
 }
 
+## Every entry always carries name/keyword/tier/rarity/desc. Only the three Slagged entries
+## additionally carry drawback/absolution/goal (ItemDB.is_slagged checks the keyword, not these keys).
 const ITEMS := {
 	"bellows_valve": {
 		"name": "Bellows Valve", "keyword": "conductor", "tier": "A", "rarity": "Common",

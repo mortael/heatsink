@@ -1,7 +1,7 @@
 class_name Pedestal
 extends Node2D
 ## Something to interact with in a non-combat room: a shop item, a repair, an altar, the Crucible.
-## Stand next to it to read it, press Interact (E / pad A) to use it. Game.use_pedestal does the work.
+## Stand next to it to read it, press Interact (E / pad A) to use it. SpecialRooms.use_pedestal does the work.
 
 const REACH := 1.4 * C.TILE
 

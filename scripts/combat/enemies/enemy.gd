@@ -4,6 +4,9 @@ extends CharacterBody2D
 
 signal defeated(enemy: Enemy)
 
+## OTHER covers test/debug hits that don't need to match a specific source.
+enum DamageKind { OTHER, RIVET, SHARD, ARC, VENT, IGNITE, FLARE }
+
 const MAX_RIVETS := 8
 const RIVET_LIFE := 6.0
 
@@ -19,7 +22,7 @@ var flash_frames := 0
 var flash_crit := false
 var knock := Vector2.ZERO
 var rivets: Array = [] # each: [time_left, angle]
-var last_kind := "" # damage kind of the last hit (Hungry Coal counts Vent kills)
+var last_kind := DamageKind.OTHER # damage kind of the last hit (Hungry Coal counts Vent kills)
 var last_depth := 0 # shard generation that last hit us (limits shard cascades)
 var ignite_stacks := 0
 var ignite_time := 0.0
@@ -107,31 +110,31 @@ func _tick_ignite(delta: float) -> void:
 		game.fx.ember(global_position + Vector2(randf_range(-radius, radius), randf_range(-radius, radius) * 0.5))
 	if _ignite_tick <= 0.0:
 		_ignite_tick += IGNITE_TICK
-		take_damage(IGNITE_DPS_PER_STACK * IGNITE_TICK * ignite_stacks, false, Vector2.ZERO, "ignite", last_depth) # keep the shard generation so Ignite kills respect the cascade cap
+		take_damage(IGNITE_DPS_PER_STACK * IGNITE_TICK * ignite_stacks, false, Vector2.ZERO, DamageKind.IGNITE, last_depth) # keep the shard generation so Ignite kills respect the cascade cap
 	if ignite_time <= 0.0:
 		clear_ignite()
 
 
-func take_damage(amount: float, crit: bool, push: Vector2, kind: String, depth := 0) -> void:
+func take_damage(amount: float, crit: bool, push: Vector2, kind: DamageKind, depth := 0) -> void:
 	if dead:
 		return
 	hp -= amount
 	last_depth = depth
 	last_kind = kind
 	knock += push
-	if kind == "ignite":
+	if kind == DamageKind.IGNITE:
 		game.fx.number(global_position + Vector2(0, -radius - 6), amount, false, Color(1, 0.6, 0.25), 14)
 	else:
 		flash_frames = 3
 		flash_crit = crit
 		game.fx.number(global_position + Vector2(0, -radius - 6), amount, crit)
-	if kind == "rivet":
+	if kind == DamageKind.RIVET:
 		Sfx.play("hit", 0.0, -8.0)
 	if crit:
 		Sfx.play("crit", 0.0, -4.0)
 		Juice.hitstop(5)
 		Juice.add_trauma(0.12)
-	elif kind == "rivet":
+	elif kind == DamageKind.RIVET:
 		Juice.hitstop(2)
 		Juice.add_trauma(0.04)
 	if hp <= 0.0:

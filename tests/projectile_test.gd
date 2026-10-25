@@ -109,12 +109,12 @@ func _shard_recursion() -> void:
 	_fixture()
 	game.inventory.add("frag_lattice")
 	var victim := _enemy(Vector2.ZERO, 1.0)
-	victim.take_damage(1.0, false, Vector2.ZERO, "shard", 1)
+	victim.take_damage(1.0, false, Vector2.ZERO, Enemy.DamageKind.SHARD, 1)
 	var shards := _shards()
 	check(shards.size() == 4, "A generation-one shard kill spawns four next-generation shards")
 	check(shards.all(func(shard: Shard) -> bool: return shard.depth == CombatEffects.SHARD_DEPTH_CAP), "Spawned shards carry the recursion depth cap")
 	victim = _enemy(Vector2(100.0, 0.0), 1.0)
-	victim.take_damage(1.0, false, Vector2.ZERO, "shard", CombatEffects.SHARD_DEPTH_CAP)
+	victim.take_damage(1.0, false, Vector2.ZERO, Enemy.DamageKind.SHARD, CombatEffects.SHARD_DEPTH_CAP)
 	check(_shards().size() == 4, "A shard kill at the depth cap cannot create another generation")
 	await _clear_fixture()
 
@@ -200,7 +200,7 @@ func _rivet_dead_colliders() -> void:
 		await get_tree().physics_frame
 		await get_tree().process_frame
 		# Kill after physics registration, then fire before deferred deletion runs.
-		corpse.take_damage(100.0, false, Vector2.ZERO, "test")
+		corpse.take_damage(100.0, false, Vector2.ZERO, Enemy.DamageKind.OTHER)
 		rivet._physics_process(300.0 / Rivet.SPEED)
 		check(corpse.is_queued_for_deletion() and corpse.rivet_count() == 0, "A pending enemy deletion cannot absorb or embed another Rivet")
 		check(first.hp == 92.0 and first.rivet_count() == 1, "A Rivet passes the dead collider and reaches the first live enemy")
@@ -269,7 +269,7 @@ func _tempered_death_hooks() -> void:
 		var outside := _enemy(Vector2(3.0 * C.TILE, 0.0))
 		var victim := _enemy(Vector2.ZERO)
 		victim.add_ignite(6, 10)
-		victim.take_damage(100.0, false, Vector2.ZERO, "rivet")
+		victim.take_damage(100.0, false, Vector2.ZERO, Enemy.DamageKind.RIVET)
 		check(nearby.ignite_stacks == 3 and outside.ignite_stacks == 0, "Tinder's death burst shares half the stacks within its range only")
 		check(extended.ignite_stacks == (3 if tempered else 0), "Tempered Tinder extends the death burst from 1.5 to 2.5 tiles")
 		await _clear_fixture()
@@ -279,7 +279,7 @@ func _tempered_death_hooks() -> void:
 		if tempered:
 			game.inventory.temper("frag_lattice")
 		victim = _enemy(Vector2.ZERO)
-		victim.take_damage(100.0, false, Vector2.ZERO, "rivet")
+		victim.take_damage(100.0, false, Vector2.ZERO, Enemy.DamageKind.RIVET)
 		check(_shards().size() == (6 if tempered else 4), "Frag Lattice creates its ordinary or tempered shard count on death")
 		await _clear_fixture()
 

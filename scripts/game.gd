@@ -179,7 +179,7 @@ func _build_room(kind: String) -> void:
 		_open_doors()
 
 
-func _pick_layout(kind: String) -> Array:
+func _pick_layout(kind: String) -> Array[String]:
 	if not RunMap.is_combat(kind):
 		return Layouts.HALL
 	if kind == "gate" or run.index == 1:
@@ -236,7 +236,7 @@ func _process(delta: float) -> void:
 	if not dead and player.interact_pressed():
 		for p in special_rooms.pedestals:
 			if p.near:
-				use_pedestal(p)
+				special_rooms.use_pedestal(p)
 				break
 
 
@@ -357,12 +357,6 @@ func _claim_reward(id: String) -> void:
 	if id != "":
 		inventory.add(id)
 	_open_doors()
-
-
-# ---------------------------------------------------------------- non-combat rooms
-
-func use_pedestal(p: Pedestal) -> void:
-	special_rooms.use_pedestal(p)
 
 
 # ---------------------------------------------------------------- events

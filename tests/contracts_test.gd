@@ -235,7 +235,7 @@ func _combat_contracts() -> void:
 	heat_effects.inventory = heat_inventory
 	heat_effects.player = player
 	var arc_kill := EnemyScript.new()
-	arc_kill.last_kind = "arc"
+	arc_kill.last_kind = Enemy.DamageKind.ARC
 	player.vent_cd = 2.0
 	heat_effects.on_kill(arc_kill)
 	check(is_equal_approx(player.vent_cd, 1.5), "Heat Engine refunds vent cooldown for arc kills through the shared kill hook")
@@ -411,13 +411,13 @@ func _forgewarden_contracts(game: RunGame) -> void:
 	game.world.add_child(warden)
 	warden.facing = Vector2.RIGHT
 
-	warden.take_damage(40.0, false, Vector2.LEFT, "contract")
+	warden.take_damage(40.0, false, Vector2.LEFT, Enemy.DamageKind.OTHER)
 	check(is_equal_approx(warden.hp, 590.0) and is_equal_approx(warden.plate_hp, 40.0), "Front plate blocks 75% of damage and tracks absorbed damage")
-	warden.take_damage(40.0, false, Vector2.LEFT, "contract")
+	warden.take_damage(40.0, false, Vector2.LEFT, Enemy.DamageKind.OTHER)
 	check(is_equal_approx(warden.hp, 580.0) and warden.plates == 2 and is_equal_approx(warden.plate_hp, Forgewarden.PLATE_HP), "A plate breaks at 80 absorbed damage and restores the next plate")
-	warden.take_damage(10.0, false, Vector2.RIGHT, "contract")
+	warden.take_damage(10.0, false, Vector2.RIGHT, Enemy.DamageKind.OTHER)
 	check(is_equal_approx(warden.hp, 565.0), "Back damage receives the 50% bonus")
-	warden.take_damage(10.0, false, Vector2.ZERO, "ignite")
+	warden.take_damage(10.0, false, Vector2.ZERO, Enemy.DamageKind.IGNITE)
 	check(is_equal_approx(warden.hp, 555.0), "Ignite damage bypasses directional armour")
 
 	player.pips = player.max_pips

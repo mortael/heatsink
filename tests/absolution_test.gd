@@ -52,10 +52,10 @@ func _hungry_coal() -> void:
 	inventory.absolved.connect(func(id: String) -> void: events.append(id))
 	inventory.add("hungry_coal")
 	var victim := EnemyScript.new()
-	victim.last_kind = "rivet"
+	victim.last_kind = Enemy.DamageKind.RIVET
 	effects.on_kill(victim)
 	check(inventory.absolution["hungry_coal"] == 0.0, "Non-Vent kills do not advance Hungry Coal")
-	victim.last_kind = "vent"
+	victim.last_kind = Enemy.DamageKind.VENT
 	for i in 39:
 		effects.on_kill(victim)
 	check(events.is_empty() and inventory.cursed("hungry_coal") and inventory.heat_decay_mult() == 0.0, "Thirty-nine Vent kills leave Hungry Coal's decay drawback active")

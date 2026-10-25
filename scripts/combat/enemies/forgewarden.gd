@@ -210,11 +210,11 @@ func _drop_molten() -> void:
 
 
 ## Armour: plates soak 75% from the front; the back takes +50%. Damage over time is not armoured.
-func take_damage(amount: float, crit: bool, push: Vector2, kind: String, depth := 0) -> void:
+func take_damage(amount: float, crit: bool, push: Vector2, kind: DamageKind, depth := 0) -> void:
 	if dead:
 		return
 	var from: Vector2 = -push.normalized() if push.length() > 0.01 else (game.player.global_position - global_position).normalized()
-	if kind != "ignite" and from != Vector2.ZERO:
+	if kind != DamageKind.IGNITE and from != Vector2.ZERO:
 		var dot := facing.dot(from)
 		if dot >= FRONT_COS and plates > 0:
 			plate_hp -= amount

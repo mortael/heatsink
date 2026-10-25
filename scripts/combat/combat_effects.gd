@@ -51,9 +51,9 @@ func _apply_on_hit(e: Enemy, hot: bool) -> void:
 func on_kill(e: Enemy) -> void:
 	var inv := inventory
 	var pos := e.global_position
-	if e.last_kind == "arc" and inv.has("heat_engine"):
+	if e.last_kind == Enemy.DamageKind.ARC and inv.has("heat_engine"):
 		player.refund_vent_cooldown(0.5)
-	if e.last_kind == "vent" and inv.cursed("hungry_coal"):
+	if e.last_kind == Enemy.DamageKind.VENT and inv.cursed("hungry_coal"):
 		inv.progress_absolution("hungry_coal", 1.0)
 	if inv.has("tinder_rounds") and e.ignite_stacks > 1:
 		var share := e.ignite_stacks / 2
@@ -108,7 +108,7 @@ func on_vent(_amount: float) -> void:
 			var dmg := (14.0 if big else 10.0) + 5.0 * e.ignite_stacks
 			e.clear_ignite()
 			fx.arc(player.global_position, e.global_position)
-			e.take_damage(dmg, false, Vector2.ZERO, "arc")
+			e.take_damage(dmg, false, Vector2.ZERO, Enemy.DamageKind.ARC)
 		if n > 0:
 			Sfx.play("zap", 0.0, -4.0)
 	if inv.has("heat_engine"):
@@ -123,7 +123,7 @@ func radial_arcs(from: Vector2, count: int, reach: float, dmg: float, skip: Enem
 	for i in mini(count, cands.size()):
 		var e: Enemy = cands[i]
 		fx.arc(from, e.global_position)
-		e.take_damage(dmg, false, Vector2.ZERO, "arc")
+		e.take_damage(dmg, false, Vector2.ZERO, Enemy.DamageKind.ARC)
 	if not cands.is_empty():
 		Sfx.play("zap", 3.0, -8.0)
 
@@ -157,7 +157,7 @@ func _detonate_flares() -> void:
 	for pt in pts:
 		fx.rivet_burst(pt, 1)
 		for o in _enemies_near(pt, C.TILE):
-			o.take_damage(12.0, false, Vector2.ZERO, "flare")
+			o.take_damage(12.0, false, Vector2.ZERO, Enemy.DamageKind.FLARE)
 	# Lightning web between flares within 4 tiles: damages everything it crosses.
 	for i in pts.size():
 		for j in range(i + 1, pts.size()):
@@ -173,7 +173,7 @@ func _detonate_flares() -> void:
 				var closest := Geometry2D.get_closest_point_to_segment(en.global_position, a, b)
 				if closest.distance_to(en.global_position) <= en.radius + 10.0:
 					hit[en] = true
-					en.take_damage(12.0, false, Vector2.ZERO, "arc")
+					en.take_damage(12.0, false, Vector2.ZERO, Enemy.DamageKind.ARC)
 	flares_detonated.emit()
 	Juice.hitstop(8)
 	Juice.add_trauma(0.4)

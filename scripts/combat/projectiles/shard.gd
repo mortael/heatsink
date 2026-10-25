@@ -76,7 +76,7 @@ func _move(dist: float, can_hit: bool) -> void:
 				exclude.append(hit.rid)
 				continue
 			effects.on_shard_hit(e)
-			e.take_damage(DAMAGE, false, dir * 60.0, "shard", depth)
+			e.take_damage(DAMAGE, false, dir * 60.0, Enemy.DamageKind.SHARD, depth)
 			queue_free()
 			return
 		# Wall

@@ -56,9 +56,9 @@ func _ready() -> void:
 			enemy.plates = 1
 			enemy.plate_hp = 1.0
 			enemy.facing = Vector2.RIGHT
-			enemy.take_damage(4.0, false, Vector2.LEFT, "test")
+			enemy.take_damage(4.0, false, Vector2.LEFT, Enemy.DamageKind.OTHER)
 			check(armour_events.size() == 1, "Breaking the final plate forwards an armour event through Director")
-		enemy.take_damage(10000.0, false, Vector2.ZERO, "test")
+		enemy.take_damage(10000.0, false, Vector2.ZERO, Enemy.DamageKind.OTHER)
 	director._physics_process(0.1)
 	director._physics_process(0.1)
 	check(defeats.size() == 2 and clears.size() == 1 and not director.active, "The encounter clears exactly once after every retained unit actually dies")

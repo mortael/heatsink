@@ -96,7 +96,7 @@ func _hit_enemy(e: Enemy) -> void:
 		dmg *= 2.0 if inv.is_tempered("rebound_charge") else 1.5
 	e.embed_rivet()
 	effects.on_rivet_hit(e, overdrive, crit) # on-hit effects land before damage, so a killing hit still ignites
-	e.take_damage(dmg, crit, dir * 110.0, "rivet")
+	e.take_damage(dmg, crit, dir * 110.0, Enemy.DamageKind.RIVET)
 
 
 func _color() -> Color:

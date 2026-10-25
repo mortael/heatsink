@@ -294,7 +294,7 @@ func _vent() -> void:
 		if d <= radius + e.radius and dmg > 0.5:
 			var tension: float = 1.0 + TENSION_PER_RIVET * e.rivet_count()
 			var push: Vector2 = (e.global_position - global_position).normalized() * 320.0
-			e.take_damage(dmg * tension, false, push, "vent")
+			e.take_damage(dmg * tension, false, push, Enemy.DamageKind.VENT)
 
 	for b in bursts:
 		var pos: Vector2 = b[0]
@@ -305,7 +305,7 @@ func _vent() -> void:
 			if e.dead:
 				continue
 			if e.global_position.distance_to(pos) <= C.TILE + e.radius:
-				e.take_damage(RIVET_BURST_DAMAGE * n, false, Vector2.ZERO, "rivet")
+				e.take_damage(RIVET_BURST_DAMAGE * n, false, Vector2.ZERO, Enemy.DamageKind.RIVET)
 	for e in get_tree().get_nodes_in_group("enemies"):
 		e.clear_rivets()
 
@@ -348,12 +348,18 @@ func _on_vent_ready() -> void:
 		Sfx.play("band", 12.0, -16.0)
 
 
-func _on_band_changed(new_band: int, old_band: int) -> void:
+func _on_band_changed(new_band: Heat.Band, old_band: Heat.Band) -> void:
 	if new_band == Heat.Band.OVERHEAT:
 		return
 	gauge_pulsed.emit()
 	if new_band > old_band:
-		Sfx.play("band", [0.0, 0.0, 4.0, 7.0][new_band], -4.0)
+		var semitones := 0.0
+		match new_band:
+			Heat.Band.HOT:
+				semitones = 4.0
+			Heat.Band.OVERHEAT:
+				semitones = 7.0
+		Sfx.play("band", semitones, -4.0)
 
 
 func _on_overheated() -> void:

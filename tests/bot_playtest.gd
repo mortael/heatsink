@@ -69,7 +69,7 @@ func _ready() -> void:
 		anvil.position = game.player.position
 		game.world.add_child(anvil)
 		game.special_rooms.pedestals.append(anvil)
-		game.use_pedestal(anvil)
+		game.special_rooms.use_pedestal(anvil)
 
 
 func _process(_delta: float) -> void:
