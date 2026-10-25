@@ -1,4 +1,11 @@
 ; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
@@ -10,21 +17,21 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
-Juice="*res://scripts/juice.gd"
-Sfx="*res://scripts/sfx.gd"
+Juice="*res://scripts/presentation/juice.gd"
+Sfx="*res://scripts/presentation/sfx.gd"
 Settings="*res://scripts/settings.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 window/handheld/orientation=4
 
-[physics]
+[editor_plugins]
 
-common/physics_ticks_per_second=60
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 
 [rendering]
 

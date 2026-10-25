@@ -52,10 +52,37 @@ jobs:
         run: timeout 300 ~/godot/godot --headless --import
 
       - name: Check room generator
-        run: timeout 300 ~/godot/godot --headless -s res://tests/room_gen_test.gd -- 2000 1
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/room_gen_test.gd -- 2000 1
 
       - name: Check menus
-        run: timeout 300 ~/godot/godot --headless --path . res://tests/menu_test.tscn
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/menu_test.tscn
+
+      - name: Check gameplay progression
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/bot_playtest.tscn -- 400 1 x
+
+      - name: Check all-items fusion progression
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/bot_playtest.tscn -- 400 2 allitems
+
+      - name: Check elite progression
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/bot_playtest.tscn -- 400 3 elite
+
+      - name: Check forge progression
+        run: timeout 300 python3 tests/run_headless.py --godot ~/godot/godot res://tests/bot_playtest.tscn -- 400 4 forge
+
+      - name: Check gameplay contracts
+        run: |
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/contracts_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/absolution_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/projectile_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/special_rooms_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/inventory_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/heat_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/run_map_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/game_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/director_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/presentation_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/settings_test.tscn
+          timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/room_spawn_test.tscn
 
       - name: Export Windows
         run: |

@@ -3,7 +3,7 @@ extends Node
 ## Run: godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- [seconds] [seed] [mode] [shot_dir]
 ## mode: "x" normal, "passive" stands still, "allitems" starts with every item (stress test),
 ## "slagged" starts with the three Slagged items, "elite" always takes an Elite door when one is offered,
-## "forge" starts with Tinder Rounds and 3 Cores so the Anvil can force a Fusion. Between fights the bot shops, rests, gambles
+## "forge" starts with Tinder Rounds, 3 Cores and an Anvil choice before random drops can finish the recipe. Between fights the bot shops, rests, gambles
 ## and walks through a random door, so a long run exercises the whole Stratum route.
 
 var game: Node
@@ -22,6 +22,8 @@ var picks := 0
 var picker_frames := 0
 var slagged := false
 var elite_mode := false
+var forge_mode := false
+var forced_fusion_observed := false
 var dodges := 0
 var hits := {} # damage source -> pips lost
 var last_pips := -1
@@ -46,6 +48,7 @@ func _ready() -> void:
 	all_items = args.size() > 2 and args[2] == "allitems"
 	slagged = args.size() > 2 and args[2] == "slagged"
 	elite_mode = args.size() > 2 and args[2] == "elite"
+	forge_mode = args.size() > 2 and args[2] == "forge"
 	if args.size() > 3:
 		shot_dir = args[3]
 	game = load("res://main.tscn").instantiate()
@@ -58,6 +61,15 @@ func _ready() -> void:
 	for id: String in ItemDB.ITEMS:
 		if (all_items and not ItemDB.is_slagged(id)) or (slagged and ItemDB.is_slagged(id)):
 			game.inventory.add(id)
+	if forge_mode:
+		# Pin the scenario's precondition, not its result: use the actual choice and payment path.
+		var anvil := Pedestal.new()
+		anvil.game = game
+		anvil.kind = "anvil"
+		anvil.position = game.player.position
+		game.world.add_child(anvil)
+		game.pedestals.append(anvil)
+		game.use_pedestal(anvil)
 
 
 func _process(_delta: float) -> void:
@@ -107,8 +119,16 @@ func _process(_delta: float) -> void:
 			await get_tree().process_frame
 			get_viewport().get_texture().get_image().save_png("%s/death_ledger.png" % shot_dir)
 		_report(p)
-		# An active bot that never clears a room means the game loop is broken.
-		get_tree().quit(1 if not passive and game.director.clear_times.is_empty() else 0)
+		var success: bool = passive or (game.victory and game.run.index == RunMap.GATE and game.rooms_cleared >= 8)
+		if elite_mode:
+			success = success and game.elites_killed >= 2
+		if forge_mode:
+			success = success and forced_fusion_observed
+		if all_items:
+			success = success and game.inventory.fusions.size() == ItemDB.FUSIONS.size()
+		if not success:
+			push_error("Bot scenario failed: expected Gate victory and mode-specific progression before the frame limit")
+		get_tree().quit(0 if success else 1)
 
 
 func _bot(p: Player) -> void:
@@ -256,7 +276,8 @@ func _make_plan(p: Player) -> Array:
 			if p.pips < p.max_pips:
 				out.push_front(peds.filter(func(q: Pedestal) -> bool: return q.kind == "repair")[0])
 		"vault":
-			var kind := "vault_repair" if p.pips < p.max_pips - 1 or game.cores == 0 else "anvil"
+			var can_force_fusion: bool = forge_mode and game.cores >= ItemDB.FORGE_COST and not game.inventory.forgeable().is_empty()
+			var kind: String = "anvil" if can_force_fusion else ("vault_repair" if p.pips < p.max_pips - 1 or game.cores == 0 else "anvil")
 			out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == kind))
 			if p.max_pips >= 5:
 				out.append_array(peds.filter(func(q: Pedestal) -> bool: return q.kind == "altar"))
@@ -284,10 +305,13 @@ func _pick() -> void:
 	var best := 0
 	for i in game.picker.options.size():
 		var o: String = game.picker.options[i]
-		if o.begins_with("forge:") or (not o.contains(":") and inv.completes_fusion(o) != ""):
+		if o.begins_with("forge:") or (not o.contains(":") and inv.fusion_completed_by(o) != ""):
 			best = i
+	var selected: String = game.picker.options[best]
 	picks += 1
 	game.picker.choose(best)
+	if forge_mode and selected.begins_with("forge:"):
+		forced_fusion_observed = inv.forged.has(selected.trim_prefix("forge:"))
 
 
 func _report(p: Player) -> void:
@@ -311,7 +335,7 @@ func _report(p: Player) -> void:
 	print("route: %s" % str(game.run.visited))
 	print("scrap: %d  max pips: %d  used: %s  victory: %s" % [game.scrap, p.max_pips, str(used), game.victory])
 	print("pips lost by source: %s" % str(hits))
-	print("elites: %d  cores: %d  tempered: %s  forged: %s  frames spent dodging: %d" % [game.elites_killed, game.cores, str(game.inventory.tempered), str(game.inventory.forged), dodges])
+	print("elites: %d  cores: %d  tempered: %s  forged: %s  forced fusion observed: %s  frames spent dodging: %d" % [game.elites_killed, game.cores, str(game.inventory.tempered), str(game.inventory.forged), forced_fusion_observed, dodges])
 	var cursed: Array = game.inventory.owned.filter(func(id: String) -> bool: return ItemDB.is_slagged(id))
 	if not cursed.is_empty():
 		print("slagged: %s  absolution: %s  absolved: %s" % [str(cursed), str(game.inventory.absolution), str(game.inventory.absolved_ids)])

@@ -16,20 +16,31 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	var err := cfg.load(PATH)
 	if err == OK:
-		volume = clampf(cfg.get_value("audio", "volume", volume), 0.0, 1.0)
-		shake = clampf(cfg.get_value("video", "shake", shake), 0.0, 1.0)
-		fullscreen = cfg.get_value("video", "fullscreen", fullscreen)
-		var l: Variant = cfg.get_value("video", "lights", lights)
-		if l is bool:
-			lights = l
-		var f: Variant = cfg.get_value("video", "show_fps", show_fps)
-		if f is bool:
-			show_fps = f
+		load_values(cfg)
 	elif err != ERR_FILE_NOT_FOUND:
 		push_warning("Settings: could not read %s (error %d), using defaults" % [PATH, err])
 	# A browser only allows fullscreen from a click, so the web build never restores it at startup.
 	apply(not OS.has_feature("web"))
 	add_child(FpsCounter.new())
+
+
+func load_values(cfg: ConfigFile) -> void:
+	volume = _read_setting(cfg, "audio", "volume", volume)
+	shake = _read_setting(cfg, "video", "shake", shake)
+	fullscreen = _read_setting(cfg, "video", "fullscreen", fullscreen)
+	lights = _read_setting(cfg, "video", "lights", lights)
+	show_fps = _read_setting(cfg, "video", "show_fps", show_fps)
+
+
+func _read_setting(cfg: ConfigFile, section: String, key: String, fallback: Variant) -> Variant:
+	var value: Variant = cfg.get_value(section, key, fallback)
+	if fallback is bool:
+		if value is bool:
+			return value
+	elif (value is float or value is int) and is_finite(float(value)):
+		return clampf(float(value), 0.0, 1.0)
+	push_warning("Settings: invalid %s/%s, retaining default" % [section, key])
+	return fallback
 
 
 func _notification(what: int) -> void:
@@ -53,18 +64,19 @@ func apply(with_fullscreen := true) -> void:
 			DisplayServer.window_set_mode(want)
 
 
-func save() -> void:
+func save(path := PATH) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("video", "shake", shake)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "lights", lights)
 	cfg.set_value("video", "show_fps", show_fps)
-	var err := cfg.save(PATH)
+	var err := cfg.save(path)
 	if err != OK:
-		push_warning("Settings: could not save %s (error %d)" % [PATH, err])
-		return
+		push_warning("Settings: could not save %s (error %d)" % [path, err])
+		return err
 	dirty = false
+	return OK
 
 
 func is_fullscreen() -> bool:
