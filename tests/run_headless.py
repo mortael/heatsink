@@ -40,8 +40,11 @@ def main() -> int:
             result = subprocess.run(command, cwd=project, env=environment, timeout=args.timeout,
                                     check=False, capture_output=True, text=True)
         except subprocess.TimeoutExpired as exc:
-            sys.stdout.write(exc.stdout or "")
-            sys.stderr.write(exc.stderr or "")
+            # TimeoutExpired's captured output can come back as bytes even with text=True.
+            out = exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            err = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+            sys.stdout.write(out)
+            sys.stderr.write(err)
             print(f"Test exceeded {args.timeout:g} seconds: {args.scene}", file=sys.stderr)
             return 124
         sys.stdout.write(result.stdout)
