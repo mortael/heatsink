@@ -77,15 +77,15 @@ func _room_rewards_and_transition() -> void:
 	get_tree().paused = false
 	game._process(GameScript.REWARD_DELAY)
 	check(not game.picker.is_open and game.rooms_cleared == 1, "Later frames do not repeat the completed room reward")
-	if not game.doors.is_empty():
-		var index_before := game.run.index
-		var chosen_kind := game.doors[0].kind
-		game.take_door(game.doors[0])
-		game.take_door(game.doors[-1])
-		game._process(GameScript.TRANSITION_TIME * 0.5)
-		check(game.in_transition() and game.run.index == index_before, "A door waits for the transition fade before advancing the route")
-		game._process(GameScript.TRANSITION_TIME)
-		check(not game.in_transition() and game.run.index == index_before + 1 and game.room_kind == chosen_kind, "A transition builds the chosen room once and ignores another door during the fade")
+	check(not game.doors.is_empty(), "Room 1 always offers at least one door out")
+	var index_before := game.run.index
+	var chosen_kind := game.doors[0].kind
+	game.take_door(game.doors[0])
+	game.take_door(game.doors[-1])
+	game._process(GameScript.TRANSITION_TIME * 0.5)
+	check(game.in_transition() and game.run.index == index_before, "A door waits for the transition fade before advancing the route")
+	game._process(GameScript.TRANSITION_TIME)
+	check(not game.in_transition() and game.run.index == index_before + 1 and game.room_kind == chosen_kind, "A transition builds the chosen room once and ignores another door during the fade")
 	await _clear_fixture(game)
 
 
