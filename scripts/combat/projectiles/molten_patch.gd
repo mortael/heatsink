@@ -27,6 +27,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if Upright.on: # a flat puddle on the 2.5D floor, not a top-down disc
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.15, 0.45))
 	var k := life / LIFE
 	var fade := clampf(k * 3.0, 0.0, 1.0)
 	draw_circle(Vector2.ZERO, RADIUS, Color(0.95, 0.3, 0.08, 0.45 * fade))

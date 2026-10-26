@@ -59,6 +59,20 @@ static func weapon(ci: CanvasItem, name: String, hand: Vector2, angle: float, mo
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+const MUZZLE_TIP := { # barrel tip in atlas pixels, measured from the grip, gun facing right
+	"coil_gun": Vector2(46.6, -5.4),
+}
+
+
+## Where a weapon's muzzle actually sits, world space: the grip point rotated to the aim plus
+## the barrel's own length and lift, so an emitted beam or bolt starts at the visible barrel tip
+## instead of the body's centre (noticeable side-on, where the barrel sits well above the grip).
+static func muzzle(name: String, hand: Vector2, angle: float) -> Vector2:
+	var flip := -1.0 if absf(wrapf(angle, -PI, PI)) > PI * 0.5 else 1.0
+	var tip: Vector2 = MUZZLE_TIP.get(name, Vector2(20.0 * FigureData.RES, 0.0))
+	return hand + Vector2(tip.x, tip.y * flip).rotated(angle) / FigureData.RES
+
+
 ## Hit flash for a sprite: a modulate above white brightens it.
 static func flash(frames: int, crit: bool) -> Color:
 	if frames <= 0:

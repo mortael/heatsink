@@ -64,7 +64,21 @@ func tick(delta: float, held: bool) -> void:
 		_tick += TICK
 		_zap(targets)
 	player.muzzle = 0.05
+	_light_beam()
 	queue_redraw()
+
+
+## Lights the room along the beam's path: one flash per fork end, refreshed every frame so it
+## reads as a continuous glow on the floor and walls while channelling instead of none at all.
+func _light_beam() -> void:
+	var fx: Fx = player.game.fx
+	var hot := player.heat.band == Heat.Band.HOT
+	var col := Color(0.45, 0.95, 1.0) if not hot else Color(0.85, 1.0, 1.0)
+	var origin := player.global_position
+	fx.lights.flash(origin + player.aim_dir * Player.RADIUS, col, 1.5 * C.TILE, 0.9, 0.1)
+	for b in beams:
+		var end: Vector2 = b[0]
+		fx.lights.flash(origin + end, col, (2.2 if b[1] else 1.8) * C.TILE, 1.0 if b[1] else 0.7, 0.1)
 
 
 ## Number of beams: one, three in Overdrive, two more with Brittle Crown.
@@ -157,14 +171,16 @@ func _zap(targets: Array) -> void:
 
 
 func _draw() -> void:
-	if Upright.on: # from the coil gun in the Sink's hands, at chest height
-		draw_set_transform(Vector2(0, -Upright.BOLT_LIFT))
+	var start := player.aim_dir * (Player.RADIUS + 4.0)
+	if Upright.on: # from the coil gun's barrel tip, not the body's centre
+		var angle := player.aim_dir.angle()
+		var hand := Vector2(0, -Upright.BOLT_LIFT) + player.aim_dir * 4.0
+		draw_set_transform(Upright.muzzle("coil_gun", hand, angle) - start)
 	if beams.is_empty():
 		return
 	var hot := player.heat.band == Heat.Band.HOT
 	var col := Color(0.45, 0.95, 1.0) if not hot else Color(0.85, 1.0, 1.0)
 	var flick := 0.85 + 0.15 * sin(_t * 70.0)
-	var start := player.aim_dir * (Player.RADIUS + 4.0)
 	Glow.halo(self, start, 22.0 * flick, Color(col, 0.8))
 	for b in beams:
 		var end: Vector2 = b[0]
@@ -172,8 +188,9 @@ func _draw() -> void:
 		Glow.strip(self, from, end, 26.0 * flick, Color(col, 0.55))
 		Glow.strip(self, from, end, 9.0, Color(1, 1, 1, 0.9))
 		_jag(from, end, Color(col, 0.9), 2.0)
-		if b[1]:
-			Glow.halo(self, end, 30.0 * flick, Color(col, 0.7))
+		# Every beam flares where it ends, not just the ones that land on an enemy, so it
+		# never looks like it's simply cut off against a wall or the end of its range.
+		Glow.halo(self, end, (30.0 if b[1] else 17.0) * flick, Color(col, 0.7 if b[1] else 0.45))
 	for l in links:
 		var a: Vector2 = l[0]
 		var b2: Vector2 = l[1]
