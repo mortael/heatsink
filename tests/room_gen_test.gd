@@ -1,6 +1,6 @@
 extends SceneTree
 ## Checks the procedural room generator: every room passes the rules, the game's own door check,
-## and rooms don't repeat. Exits with code 1 on a failure.
+## and rooms don't repeat. Also the Rainside yards: valid, and every prop has art. Exits with code 1 on a failure.
 ## Run: godot --headless --path . -s res://tests/room_gen_test.gd -- [count] [seed]
 
 const RoomScript = preload("res://scripts/world/room.gd")
@@ -35,6 +35,23 @@ func _init() -> void:
 		seen["".join(lines)] = true
 		for row: String in lines:
 			walls_total += row.count("#")
+	var street_bad := 0
+	for i in count / 4:
+		var lay := StreetGen.generate(rng)
+		var street := StreetRoom.new(lay)
+		var good: bool = street.is_valid() and not lay.props.is_empty()
+		for p: Dictionary in lay.props:
+			good = good and StreetData.PROPS.has(p.key)
+			if good:
+				for part: Array in StreetData.PROPS[p.key][p.variant].values():
+					good = good and ResourceLoader.exists("res://art/street/%s.png" % part[0])
+		street.free()
+		if not good:
+			street_bad += 1
+			if street_bad <= 3:
+				print("BAD YARD:\n" + "\n".join(lay.lines))
+	print("yards: %d  failures: %d" % [count / 4, street_bad])
+	failures += street_bad
 	var fallbacks := RoomGen.fallbacks
 	var ms := (Time.get_ticks_usec() - started) / 1000.0
 	var border := 2 * C.ROOM_W + 2 * (C.ROOM_H - 2)

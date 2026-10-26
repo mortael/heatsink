@@ -46,7 +46,7 @@ func _tempered_modifiers() -> void:
 	var contracts := [
 		["bellows_valve", "fire_interval_mult", [], 1.0, 1.0 / 1.2, 1.0 / 1.35],
 		["cinder_lens", "crit_chance", [], Player.CRIT_CHANCE, Player.CRIT_CHANCE + 0.1, Player.CRIT_CHANCE + 0.2],
-		["long_barrel", "projectile_speed_mult", [], 1.0, 1.3, 1.5],
+		["long_barrel", "projectile_mult", [], 1.0, 1.3, 1.5],
 		["heat_exchanger", "heat_decay_mult", [], 1.0, 1.3, 1.6],
 		["heat_exchanger", "dash_recharge_mult", [], 1.0, 0.8, 0.65],
 		["coolant_line", "vent_cooldown", [], Player.VENT_COOLDOWN, Player.VENT_COOLDOWN - 1.5, Player.VENT_COOLDOWN - 2.5],

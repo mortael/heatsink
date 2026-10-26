@@ -17,12 +17,19 @@ var t := 0.0
 var facing := Vector2.RIGHT
 var bit := false
 var wobble := randf() * TAU
+var flank := false # set from the difficulty: approach from an own angle so packs surround the player
+var flank_angle := randf() * TAU
 
 
 func _init() -> void:
 	max_hp = 14.0
 	radius = 13.0
 	source_name = "Clinker · Lunge Bite"
+
+
+func _ready() -> void:
+	super._ready()
+	flank = Difficulty.value("flank")
 
 
 func _ai(delta: float) -> void:
@@ -32,7 +39,7 @@ func _ai(delta: float) -> void:
 	match state:
 		S.CHASE:
 			if to_p.length() > 1.0:
-				facing = nav_dir(p.global_position, delta)
+				facing = nav_dir(_chase_target(p.global_position), delta)
 			var desired := (facing * SPEED + _separation().limit_length(1.0) * SPEED * 1.2).limit_length(SPEED)
 			velocity = velocity.lerp(desired, 0.15)
 			if to_p.length() < TRIGGER_RANGE and not game.dead:
@@ -64,7 +71,19 @@ func _ai(delta: float) -> void:
 				state = S.CHASE
 
 
+## Straight at the player, or with flanking on, to a point beside them on this Clinker's own side
+## until it is close, so a pack closes in from several directions at once.
+func _chase_target(p: Vector2) -> Vector2:
+	var d := global_position.distance_to(p)
+	if not flank or d < 3.5 * C.TILE:
+		return p
+	var spot := p + Vector2.from_angle(flank_angle) * minf(d * 0.6, 3.0 * C.TILE)
+	return spot if game.room.is_open(spot, radius) else p
+
+
 func _draw() -> void:
+	if draw_figure("clinker", facing, 1 if state == S.WINDUP or state == S.LUNGE else 0):
+		return
 	var sx := 1.0
 	var sy := 1.0 + sin(wobble) * 0.04
 	var glow := 0.0

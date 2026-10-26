@@ -4,20 +4,25 @@ signal enemy_defeated(enemy: Enemy)
 signal armour_broken
 signal room_cleared(time: float)
 ## Encounter director for combat rooms (GDD section 6).
-## Room budget TP = 8 + 2 x room index. Unit costs: Clinker 1, Linesman 4, Forgewarden 12.
-## Waves mix at most one support role with fodder, and at least 40% of each wave's TP is fodder.
+## Room budget TP = 8 + 2 x room index, times the difficulty's budget factor.
+## Unit costs follow the GDD roles: Clinker (fodder) 1, Sparkhound (chaser) 2, Slagspitter (zoner) 3,
+## Slag Mortar (artillery) 3, Linesman (disruptor) 4, Forgewarden (elite) 12.
+## Waves mix at most two non-fodder roles with fodder, and at least 40% of each wave's TP is fodder.
 ## Elite waves follow the Forgewarden's own profile instead (GDD section 7): it always arrives
 ## with 4-6 Clinkers, which is below 40% of its 12 TP by design.
-## The next wave arrives when less than 25% of the current wave's TP remains, or after 8 s.
+## The next wave arrives when less than 25% of the current wave's TP remains, or after 8 s
+## (harder levels bring it sooner, so waves overlap into hordes).
 ## Portals warn 0.8 s ahead, and nothing spawns within 3 tiles of the player.
 ## Elite rooms lead with a Forgewarden, 4-6 Clinkers and sometimes a Linesman.
 ## The Foundry Gate stands in for the Stratum boss: 3 waves, the last one led by a Forgewarden.
 
 const PORTAL_TIME := 0.8
 const MIN_SPAWN_DIST := 3.0 * C.TILE
-const WAVE_TIMEOUT := 8.0
 const SPAWN_RETRY_TIME := 0.5
-const LINESMAN_FROM := 3 # first room index that can roll a Linesman
+const COST := {"clinker": 1, "sparkhound": 2, "spitter": 3, "mortar": 3, "linesman": 4, "forgewarden": 12}
+## First room index each special role can roll on WARM; harder levels shift these earlier.
+const SPECIAL_FROM := {"sparkhound": 2, "linesman": 3, "spitter": 4, "mortar": 5}
+const LINESMAN_FROM := 3
 
 var game: RunGame # only for the terminal dead check and handing spawned Enemies their run
 var room: Room
@@ -37,11 +42,13 @@ var pending_tp := 0
 var clear_times: Array[float] = []
 var _unscheduled: Array[String] = []
 var _spawn_retry := 0.0
+var diff: Dictionary = Difficulty.LEVELS[Difficulty.DEFAULT]
 
 
 func start_room(index: int, kind := "combat") -> void:
 	room_index = index
-	budget = 8 + 2 * room_index
+	diff = Difficulty.current()
+	budget = int(round((8 + 2 * room_index) * diff.budget))
 	waves = _plan(kind)
 	wave = 0
 	room_time = 0.0
@@ -62,35 +69,64 @@ func _plan(kind: String) -> Array:
 				lead.append("linesman")
 			out.append(lead)
 			out.append(_fodder(maxi(4, (budget - _cost(lead)) / 2)))
+			for i in diff.extra_waves:
+				out.append(_mixed(maxi(6, budget / 3)))
 		"gate":
 			budget = int(budget * 1.25)
 			out.append(_mixed(budget / 3))
 			out.append(_mixed(budget / 3))
-			var last: Array = ["forgewarden", "linesman"]
+			var last: Array = ["linesman"]
+			for i in diff.gate_wardens:
+				last.push_front("forgewarden")
 			last.append_array(_fodder(6))
 			out.append(last)
 		_:
 			# 2 waves until room 6 keeps waves at 7+ TP, enough to carry a Linesman from room 3.
 			var n := 1 if room_index == 1 else (2 if room_index < 7 else 3)
+			if room_index > 1:
+				n += diff.extra_waves
 			for i in n:
 				out.append(_mixed(budget / n + (1 if i < budget % n else 0)))
 	return out
 
 
-## A wave of tp points: Clinkers plus, from room 3, Linesmen that keep at least 40% fodder.
+## A wave of tp points: fodder plus up to two special roles, keeping at least 40% fodder.
+## Until room 7 a wave holds at most one Linesman, as it did before the other roles existed.
 func _mixed(tp: int) -> Array[String]:
 	var units: Array[String] = []
-	if room_index >= LINESMAN_FROM:
-		var lines := 0
-		if tp >= 7 and randf() < 0.65: # 4 TP Linesman + 3 Clinkers keeps 40% fodder
-			lines = 1
-		if tp >= 14 and room_index >= 7 and randf() < 0.5:
-			lines = 2
-		for i in lines:
-			units.append("linesman")
-	var rest := tp - _cost(units)
+	var roles := _roles()
+	var cap := int(floor(tp * 0.6))
+	var spent := 0
+	var chance: float = 0.65 * diff.special_mult
+	var lines := 0
+	while not roles.is_empty():
+		if randf() >= chance:
+			break
+		var r: String = roles.pick_random()
+		var c: int = COST[r]
+		var too_many := r == "linesman" and lines >= (2 if room_index >= 7 else 1)
+		if spent + c > cap or too_many:
+			roles.erase(r)
+			continue
+		units.append(r)
+		spent += c
+		if r == "linesman":
+			lines += 1
+		chance *= 0.8
+	var rest := tp - spent
 	units.append_array(_fodder(maxi(rest, int(ceil(tp * 0.4)))))
 	return units
+
+
+## The (at most two) special roles this wave may use, from those unlocked by this room.
+func _roles() -> Array[String]:
+	var at: int = room_index + (diff.special_shift if room_index > 1 else mini(diff.special_shift, 0))
+	var open: Array[String] = []
+	for r: String in SPECIAL_FROM:
+		if at >= SPECIAL_FROM[r]:
+			open.append(r)
+	open.shuffle()
+	return open.slice(0, 2)
 
 
 func _fodder(n: int) -> Array[String]:
@@ -103,7 +139,7 @@ func _fodder(n: int) -> Array[String]:
 static func _cost(units: Array) -> int:
 	var tp := 0
 	for u: String in units:
-		tp += {"clinker": 1, "linesman": 4, "forgewarden": 12}[u]
+		tp += COST[u]
 	return tp
 
 
@@ -111,7 +147,7 @@ func _spawn_wave() -> void:
 	var units: Array = waves[wave]
 	wave += 1
 	wave_tp = _cost(units)
-	wave_timer = WAVE_TIMEOUT
+	wave_timer = diff.wave_timeout
 	# Packs: spawn around 2 cluster centres so they arrive as crowds. Big units get their own spot.
 	var centres: Array[Vector2] = [_spawn_point(), _spawn_point()]
 	var i := 0
@@ -175,6 +211,12 @@ func _portal(pos: Vector2, unit: String) -> bool:
 				e = Linesman.new()
 			"forgewarden":
 				e = Forgewarden.new()
+			"sparkhound":
+				e = Sparkhound.new()
+			"spitter":
+				e = Slagspitter.new()
+			"mortar":
+				e = SlagMortar.new()
 			_:
 				e = Clinker.new()
 		e.game = game
@@ -209,7 +251,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var tp := alive_tp()
 	if wave < waves.size():
-		if tp < wave_tp * 0.25 or wave_timer <= 0.0:
+		if tp < wave_tp * diff.next_wave_at or wave_timer <= 0.0:
 			_spawn_wave()
 	elif tp == 0 and pending == 0 and _unscheduled.is_empty():
 		active = false

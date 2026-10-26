@@ -44,7 +44,8 @@ static var fallbacks := 0 # times generate() gave up; tests read this
 ## Returns a fresh layout in the same format as Layouts.COMBAT, or Layouts.COMBAT[0] if
 ## every attempt failed (has not happened in testing, but the game must never get stuck).
 ## density scales the wall budget: Elite rooms use less so the Forgewarden has space to turn.
-static func generate(rng: RandomNumberGenerator, density := 1.0) -> Array[String]:
+## area: where cover may go (Rainside keeps its rows near the hall clear).
+static func generate(rng: RandomNumberGenerator, density := 1.0, area := AREA) -> Array[String]:
 	for attempt in ATTEMPTS:
 		var grid := _blank()
 		var sym := _pick_sym(rng)
@@ -53,8 +54,8 @@ static func generate(rng: RandomNumberGenerator, density := 1.0) -> Array[String
 		for tries in 80:
 			if walls >= budget:
 				break
-			var cells := _place(rng, sym)
-			if cells.is_empty() or not _fits(grid, cells):
+			var cells := _place(rng, sym, area)
+			if cells.is_empty() or not _fits(grid, cells, area):
 				continue
 			for c: Vector2i in cells:
 				if not grid[c.y][c.x]:
@@ -133,16 +134,16 @@ static func _pick_sym(rng: RandomNumberGenerator) -> Sym:
 
 
 ## One random stamp at a random spot, plus its symmetric copies. Empty if it leaves the area.
-static func _place(rng: RandomNumberGenerator, sym: Sym) -> Array[Vector2i]:
+static func _place(rng: RandomNumberGenerator, sym: Sym, area: Rect2i) -> Array[Vector2i]:
 	var shape := _shape(rng)
 	var w := 0
 	var h := 0
 	for c: Vector2i in shape:
 		w = maxi(w, c.x + 1)
 		h = maxi(h, c.y + 1)
-	if w > AREA.size.x or h > AREA.size.y:
+	if w > area.size.x or h > area.size.y:
 		return []
-	var at := Vector2i(rng.randi_range(AREA.position.x, AREA.end.x - w), rng.randi_range(AREA.position.y, AREA.end.y - h))
+	var at := Vector2i(rng.randi_range(area.position.x, area.end.x - w), rng.randi_range(area.position.y, area.end.y - h))
 	var mx := C.ROOM_W - 1
 	var my := C.ROOM_H - 1
 	var out: Array[Vector2i] = []
@@ -180,10 +181,10 @@ static func _shape(rng: RandomNumberGenerator) -> Array[Vector2i]:
 
 ## A stamp may not touch or sit one tile away from an earlier shape (that would make slits
 ## and odd merged blobs); its own symmetric copies may touch each other.
-static func _fits(grid: Array, cells: Array[Vector2i]) -> bool:
+static func _fits(grid: Array, cells: Array[Vector2i], area: Rect2i) -> bool:
 	var own := {}
 	for c: Vector2i in cells:
-		if not AREA.has_point(c):
+		if not area.has_point(c):
 			return false
 		own[c] = true
 	for c: Vector2i in cells:

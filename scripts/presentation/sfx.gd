@@ -99,6 +99,8 @@ func _build() -> void:
 		return sin(TAU * (70.0 - 40.0 * t) * t) * exp(-t * 6.0) * 0.9 + n * exp(-t * 18.0) * 0.5)
 	streams["core"] = _gen(0.7, func(t: float, _n: float) -> float:
 		return (sin(TAU * 880.0 * t) + sin(TAU * 1320.0 * t) * 0.6) * exp(-t * 5.0) * 0.25)
+	streams["glug"] = _gen(0.22, func(t: float, n: float) -> float:
+		return sin(TAU * (160.0 + 220.0 * sin(t * 30.0)) * t) * exp(-t * 14.0) * 0.4 + n * exp(-t * 30.0) * 0.1)
 	streams["clear"] = _gen(0.6, func(t: float, _n: float) -> float:
 		var f := 523.0 if t < 0.15 else 784.0
 		return sin(TAU * f * t) * exp(-fmod(t, 0.15) * 6.0) * 0.3)

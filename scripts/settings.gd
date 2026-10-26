@@ -1,5 +1,5 @@
 extends Node
-## Player settings (volume, screen shake, fullscreen, lights, FPS counter), saved to user://settings.cfg and applied at startup.
+## Player settings (volume, screen shake, fullscreen, lights, bloom, FPS counter, difficulty, Frame), saved to user://settings.cfg and applied at startup.
 
 const PATH := "user://settings.cfg"
 
@@ -7,7 +7,10 @@ var volume := 0.8 # master volume, 0..1
 var shake := 1.0 # screen shake strength, 0..1
 var fullscreen := false
 var lights := true # dynamic 2D lights and wall shadows; glow drawing stays on either way
+var bloom := true # soft glow haze on desktop builds (see Bloom); ignored where unsupported
 var show_fps := false # small frames-per-second readout in the top-left corner
+var difficulty := Difficulty.DEFAULT # 0..4, chosen when starting a run
+var frame := Frames.DEFAULT # riveter / furnace / arclight, chosen when starting a run
 var dirty := false # changed since the last save; saved on quit if the panel was never closed
 
 
@@ -29,7 +32,14 @@ func load_values(cfg: ConfigFile) -> void:
 	shake = _read_setting(cfg, "video", "shake", shake)
 	fullscreen = _read_setting(cfg, "video", "fullscreen", fullscreen)
 	lights = _read_setting(cfg, "video", "lights", lights)
+	bloom = _read_setting(cfg, "video", "bloom", bloom)
 	show_fps = _read_setting(cfg, "video", "show_fps", show_fps)
+	var d: Variant = cfg.get_value("game", "difficulty", difficulty)
+	if d is int:
+		difficulty = Difficulty.clamp_level(d)
+	var fr: Variant = cfg.get_value("game", "frame", frame)
+	if fr is String:
+		frame = Frames.clamp_id(fr)
 
 
 func _read_setting(cfg: ConfigFile, section: String, key: String, fallback: Variant) -> Variant:
@@ -70,7 +80,10 @@ func save(path := PATH) -> Error:
 	cfg.set_value("video", "shake", shake)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "lights", lights)
+	cfg.set_value("video", "bloom", bloom)
 	cfg.set_value("video", "show_fps", show_fps)
+	cfg.set_value("game", "difficulty", difficulty)
+	cfg.set_value("game", "frame", frame)
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [path, err])

@@ -84,6 +84,12 @@ jobs:
           timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/settings_test.tscn
           timeout 60 python3 tests/run_headless.py --godot ~/godot/godot res://tests/room_spawn_test.tscn
 
+      - name: Check bolts can't fire through pillars
+        run: |
+          for f in riveter furnace arclight; do
+            timeout 300 ~/godot/godot --headless --path . --fixed-fps 60 res://tests/muzzle_test.tscn -- frame=$f
+          done
+
       - name: Export Windows
         run: |
           mkdir -p build/windows

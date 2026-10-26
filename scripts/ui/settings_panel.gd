@@ -9,6 +9,7 @@ var volume: HSlider
 var shake: HSlider
 var fullscreen: CheckButton
 var lights: CheckButton
+var bloom: CheckButton
 var fps: CheckButton
 var back_button: Button
 
@@ -48,7 +49,7 @@ func _init() -> void:
 	col.add_child(fullscreen)
 	lights = CheckButton.new()
 	lights.text = "Lights & shadows"
-	lights.tooltip_text = "Flashes of light from Vents and beams, with shadows behind walls. Turn off on slow devices."
+	lights.tooltip_text = "Light from energy bolts, Vents, beams and your lamp, with shadows behind walls and pillars. Turn off on slow devices."
 	lights.button_pressed = Settings.lights
 	lights.focus_mode = Control.FOCUS_ALL
 	lights.custom_minimum_size = Vector2(0, 44)
@@ -59,6 +60,19 @@ func _init() -> void:
 		# Apply at once: the game may be paused behind this panel, so nothing would update by itself.
 		get_tree().call_group("dynamic_lights", "apply_lights"))
 	col.add_child(lights)
+	bloom = CheckButton.new()
+	bloom.text = "Bloom"
+	bloom.tooltip_text = "Soft glow around bright light. Needs Lights & shadows. Turn off if the game stutters."
+	bloom.button_pressed = Settings.bloom
+	bloom.focus_mode = Control.FOCUS_ALL
+	bloom.custom_minimum_size = Vector2(0, 44)
+	bloom.add_theme_font_size_override("font_size", 20)
+	bloom.visible = Bloom.supported() # the web and Android builds have no bloom to switch
+	bloom.toggled.connect(func(on: bool) -> void:
+		Settings.bloom = on
+		Settings.dirty = true
+		get_tree().call_group("dynamic_lights", "apply_lights"))
+	col.add_child(bloom)
 	fps = CheckButton.new()
 	fps.text = "Show FPS"
 	fps.tooltip_text = "Frames per second in the top-left corner."

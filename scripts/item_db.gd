@@ -1,5 +1,6 @@
 class_name ItemDB
 ## Item and Fusion catalogue (GDD section 5). Behaviour lives in Inventory hooks, keyed by id.
+## An item with a "frames" list is only offered to those Frames (rivet-only behaviour such as ricochets).
 
 const KEYWORD_COLORS := {
 	"conductor": Color(0.7, 0.75, 0.8),
@@ -7,6 +8,7 @@ const KEYWORD_COLORS := {
 	"shrapnel": Color(0.82, 0.85, 0.92),
 	"arc": Color(0.4, 0.9, 1.0),
 	"ricochet": Color(1.0, 0.86, 0.45),
+	"molten": Color(1.0, 0.7, 0.25),
 	"slagged": Color(1.0, 0.25, 0.3),
 	"fusion": Color(1.0, 0.82, 0.3),
 }
@@ -22,6 +24,7 @@ const RESONANCE := {
 	"shrapnel": "Every shard burst releases +2 shards",
 	"arc": "Arcs hit +1 extra target",
 	"ricochet": "All rivets ricochet +1 time",
+	"molten": "Your Molten pools are 50% wider and last 1 s longer",
 }
 
 ## Every entry always carries name/keyword/tier/rarity/desc. Only the three Slagged entries
@@ -41,7 +44,7 @@ const ITEMS := {
 	},
 	"long_barrel": {
 		"name": "Long Barrel", "keyword": "conductor", "tier": "A", "rarity": "Common",
-		"desc": "Rivets and shards fly 30% faster and 30% farther.",
+		"desc": "Rivets, shards and shockwaves fly 30% faster and farther. Swings and beams reach 30% farther.",
 	},
 	"cinder_lens": {
 		"name": "Cinder Lens", "keyword": "conductor", "tier": "A", "rarity": "Uncommon",
@@ -53,15 +56,15 @@ const ITEMS := {
 	},
 	"pyre_coating": {
 		"name": "Pyre Coating", "keyword": "ignite", "tier": "B", "rarity": "Uncommon",
-		"desc": "While Hot, rivets apply +2 Ignite. Overheating sets every enemy within 4 tiles on fire (3 stacks).",
+		"desc": "While Hot, your hits apply +2 Ignite. Overheating sets every enemy within 4 tiles on fire (3 stacks).",
 	},
 	"frag_lattice": {
 		"name": "Frag Lattice", "keyword": "shrapnel", "tier": "B", "rarity": "Rare",
 		"desc": "When an enemy you hit dies, it releases 4 shards in an X (6 dmg). Shards trigger your on-hit effects at 50% chance.",
 	},
 	"splinter_heads": {
-		"name": "Splinter Heads", "keyword": "shrapnel", "tier": "B", "rarity": "Uncommon",
-		"desc": "Rivets that stop against a wall burst into 3 shards that spray back into the room.",
+		"name": "Splinter Heads", "keyword": "shrapnel", "tier": "B", "rarity": "Uncommon", "frames": ["riveter", "furnace"],
+		"desc": "Rivets and shockwaves that break on a wall burst into 3 shards that spray back into the room.",
 	},
 	"feedback_coil": {
 		"name": "Feedback Coil", "keyword": "arc", "tier": "B", "rarity": "Rare",
@@ -69,21 +72,29 @@ const ITEMS := {
 	},
 	"static_rivets": {
 		"name": "Static Rivets", "keyword": "arc", "tier": "B", "rarity": "Uncommon",
-		"desc": "Every 5th rivet hit arcs to 2 enemies within 3 tiles of the target (8 dmg).",
+		"desc": "Every 5th hit arcs to 2 enemies within 3 tiles of the target (8 dmg).",
 	},
 	"bank_shot": {
-		"name": "Bank Shot", "keyword": "ricochet", "tier": "B", "rarity": "Uncommon",
+		"name": "Bank Shot", "keyword": "ricochet", "tier": "B", "rarity": "Uncommon", "frames": ["riveter"],
 		"desc": "Rivets always ricochet once, even when not Hot.",
 	},
 	"rebound_charge": {
-		"name": "Rebound Charge", "keyword": "ricochet", "tier": "B", "rarity": "Uncommon",
+		"name": "Rebound Charge", "keyword": "ricochet", "tier": "B", "rarity": "Uncommon", "frames": ["riveter"],
 		"desc": "After a ricochet, a rivet deals +50% damage and pierces 1 more enemy.",
+	},
+	"slag_trail": {
+		"name": "Slag Trail", "keyword": "molten", "tier": "B", "rarity": "Uncommon",
+		"desc": "Dashes leave a Molten pool where they start and where they end (6 dmg/s to enemies, 2 s).",
+	},
+	"cinder_spill": {
+		"name": "Cinder Spill", "keyword": "molten", "tier": "B", "rarity": "Uncommon",
+		"desc": "Enemies you kill while Hot leave a Molten pool. Your Molten pools set enemies in them on fire (1 Ignite per tick).",
 	},
 	# Slagged items (GDD section 4): Legendary-strength power with a printed drawback.
 	# Completing the Absolution removes the drawback and keeps the power.
 	"brittle_crown": {
 		"name": "Brittle Crown", "keyword": "slagged", "tier": "S", "rarity": "Slagged",
-		"desc": "+2 rivets per shot, always on.",
+		"desc": "Always on: +2 rivets per shot (Riveter), a shockwave on every swing (Furnace), +2 beam forks (Arclight).",
 		"drawback": "Any hit taken while Hot costs 3 pips.",
 		"absolution": "Clear 3 rooms in a row without taking damage.", "goal": 3,
 	},
@@ -121,10 +132,12 @@ const TEMPER := {
 	"bellows_valve": "+35% attack rate (was +20%).",
 	"heat_exchanger": "Heat decays 60% faster, dashes recharge 35% faster.",
 	"coolant_line": "Vent cooldown -2.5 s (was -1.5 s).",
-	"long_barrel": "Rivets and shards fly 50% faster and farther.",
+	"long_barrel": "50% faster and farther (was 30%).",
 	"cinder_lens": "+20% crit chance (was +10%).",
 	"tinder_rounds": "Death bursts reach 2.5 tiles (was 1.5).",
 	"pyre_coating": "+3 Ignite while Hot; Overheat ignites within 5 tiles for 5 stacks.",
+	"slag_trail": "Your Molten pools burn for 12 dmg/s (was 6).",
+	"cinder_spill": "Kills leave a pool from Warm up (was Hot).",
 	"frag_lattice": "6 shards per death (was 4).",
 	"splinter_heads": "5 shards per wall stop (was 3).",
 	"feedback_coil": "Vent arcs hit 5 enemies for 14 dmg.",
@@ -148,6 +161,13 @@ static func get_item(id: String) -> Dictionary:
 	if id == "patch_kit":
 		return PATCH_KIT
 	return ITEMS[id]
+
+
+static func fits(id: String, frame: String) -> bool:
+	if id == "patch_kit":
+		return true
+	var only: Array = ITEMS[id].get("frames", [])
+	return only.is_empty() or only.has(frame)
 
 
 static func is_slagged(id: String) -> bool:

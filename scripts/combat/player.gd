@@ -5,7 +5,8 @@ signal died
 signal vented(amount: float)
 signal gauge_pulsed
 
-## The Sink, Riveter Frame. Verbs: move, attack, dash, vent (GDD sections 2-3).
+## The Sink. Verbs: move, attack, dash, vent (GDD sections 2-3). The Frame picks the attack:
+## the Riveter's Rivet Gun lives here, the Furnace swings a SlagMaul and the Arclight channels a CoilLance.
 
 const SPEED := 6.0 * C.TILE
 const ACCEL_TIME := 0.08
@@ -24,7 +25,8 @@ const DASH_MAX := 2
 const DASH_QUENCH := 10.0
 
 const VENT_COOLDOWN := 6.0
-const VENT_MULT := 1.0 # Riveter
+const SLAG_SHIELD_TIME := 4.0 # Furnace: a hot Vent blocks the next hit for this long
+const SLAG_SHIELD_AT := 80.0
 const VENT_READY_FLASH := 0.4
 const VENT_RING := RADIUS + 5.0 # cooldown / ready ring around the Sink
 const RIVET_BURST_DAMAGE := 10.0
@@ -36,6 +38,11 @@ const HIT_INVULN := 1.0
 var game: RunGame
 var inventory: Inventory
 var effects: CombatEffects
+var frame := Frames.DEFAULT
+var maul: SlagMaul # Furnace only
+var lance: CoilLance # Arclight only
+var shield := 0.0 # Furnace Slag Shield time left; blocks one hit
+var shields_used := 0
 var heat := Heat.new()
 var max_pips := MAX_PIPS # Altars and Wager stakes spend these
 var pips := MAX_PIPS
@@ -93,6 +100,16 @@ func _ready() -> void:
 	material = mat
 	add_to_group("dynamic_lights")
 	apply_lights()
+	max_pips = Frames.info(frame).pips
+	pips = max_pips
+	if frame == "furnace":
+		maul = SlagMaul.new()
+		maul.player = self
+		add_child(maul)
+	elif frame == "arclight":
+		lance = CoilLance.new()
+		lance.player = self
+		add_child(lance)
 
 
 ## Called when the Lights & shadows setting changes.
@@ -107,9 +124,13 @@ func is_invulnerable() -> bool:
 func _physics_process(delta: float) -> void:
 	if game.dead:
 		velocity = Vector2.ZERO
+		if lance != null:
+			lance.tick(delta, false) # let go of the beam
 		return
 	var inv: Inventory = inventory
-	heat.decay_rate = 12.0 * inv.heat_decay_mult()
+	heat.decay_rate = Heat.DECAY_RATE * inv.heat_decay_mult()
+	if lance != null and lance.grounded():
+		heat.decay_rate *= CoilLance.GROUNDED_MULT
 	heat.hot_at = inv.hot_at()
 	heat.overheat_time = inv.overheat_time()
 	heat.tick(delta)
@@ -121,6 +142,7 @@ func _physics_process(delta: float) -> void:
 	_vent_was_ready = vent_cd <= 0.0
 	vent_ready_flash = maxf(0.0, vent_ready_flash - delta / VENT_READY_FLASH)
 	invuln = maxf(0.0, invuln - delta)
+	shield = maxf(0.0, shield - delta)
 	muzzle = maxf(0.0, muzzle - delta)
 	if dash_charges < DASH_MAX:
 		dash_recharge -= delta
@@ -133,6 +155,8 @@ func _physics_process(delta: float) -> void:
 
 	if dash_time > 0.0:
 		dash_time -= delta
+		if dash_time <= 0.0:
+			effects.on_dash_end(global_position)
 		velocity = dash_dir * (DASH_DIST / DASH_TIME)
 		game.fx.trail(global_position, C.HEAT_COLD.lerp(C.HEAT_WARM, heat.value / 100.0))
 	else:
@@ -143,7 +167,11 @@ func _physics_process(delta: float) -> void:
 			_dash(move)
 	move_and_slide()
 
-	if _fire_held() and fire_cd <= 0.0 and not heat.is_overheated():
+	if maul != null:
+		maul.tick(delta, _fire_held())
+	elif lance != null:
+		lance.tick(delta, _fire_held())
+	elif _fire_held() and fire_cd <= 0.0 and not heat.is_overheated():
 		_fire()
 	if _vent_pressed() and vent_cd <= 0.0:
 		_vent()
@@ -241,11 +269,12 @@ func _fire() -> void:
 		rivet.effects = effects
 		rivet.fx = game.fx
 		rivet.position = global_position + aim_dir * (RADIUS + 6.0)
+		rivet.origin = global_position
 		rivet.dir = direction
 		rivet.overdrive = hot
 		rivet.pierce = 1 if hot else 0
 		rivet.ricochet = inv.ricochets(hot)
-		rivet.speed_mult = inv.projectile_speed_mult()
+		rivet.speed_mult = inv.projectile_mult()
 		game.world.add_child(rivet)
 	heat.add(HEAT_PER_SHOT)
 	game.fx.muzzle(global_position + aim_dir * (RADIUS + 6.0), Rivet.color_for(hot))
@@ -262,12 +291,13 @@ func _dash(move: Vector2) -> void:
 	if dash_recharge <= 0.0:
 		dash_recharge = DASH_RECHARGE * inventory.dash_recharge_mult()
 	heat.quench(DASH_QUENCH)
+	effects.on_dash(global_position)
 	Sfx.play("dash")
 
 
 func _vent() -> void:
 	var amount := heat.value
-	var mult := VENT_MULT
+	var mult: float = Frames.info(frame).vent_mult
 	if heat.is_overheated():
 		amount = 100.0
 		mult *= 0.5 # venting during lockout is allowed at half damage
@@ -320,11 +350,31 @@ func _vent() -> void:
 	Juice.add_trauma(0.2 + 0.25 * amount / 100.0)
 	Sfx.play("vent", -6.0 + amount / 20.0)
 	vented.emit(amount)
+	if frame == "furnace" and amount >= SLAG_SHIELD_AT:
+		shield = SLAG_SHIELD_TIME
+		game.fx.ring(global_position, RADIUS + 14.0, Color(1, 0.75, 0.3), 0.35)
+		Sfx.play("slam", 8.0, -8.0)
+	elif frame == "arclight":
+		var pylon := StaticPylon.new()
+		pylon.game = game
+		pylon.position = global_position
+		game.world.add_child(pylon)
 	effects.on_vent(amount)
 
 
 func take_hit(amount: int, source: String) -> void:
 	if game.dead or is_invulnerable():
+		return
+	if shield > 0.0:
+		# The Slag Shield takes the whole hit and cracks.
+		shield = 0.0
+		shields_used += 1
+		invuln = HIT_INVULN * 0.5
+		Juice.hitstop(5)
+		Juice.add_trauma(0.2)
+		Sfx.play("slam", 10.0, -4.0)
+		game.fx.sparks(global_position, Vector2.UP, 14, Color(1, 0.75, 0.3))
+		game.fx.ring(global_position, RADIUS + 20.0, Color(1, 0.75, 0.3), 0.3)
 		return
 	if heat.is_overheated():
 		amount += 1
@@ -404,20 +454,100 @@ func _draw() -> void:
 		core = C.HEAT_COLD.lerp(C.HEAT_WARM, heat.value / heat.hot_at)
 	else:
 		core = C.HEAT_WARM.lerp(C.HEAT_HOT, clampf((heat.value - heat.hot_at) / 20.0, 0.0, 1.0))
+	if Upright.on: # the glow and the Vent ring lie flat on the floor around the feet, under the sprite
+		draw_set_transform(Upright.feet(RADIUS), 0.0, Vector2(1.0, 0.45))
 	# Hot glow
 	if heat.band == Heat.Band.HOT:
 		draw_circle(Vector2.ZERO, RADIUS + 9.0, Color(1, 0.6, 0.2, 0.18 * a))
-	# Barrel
+	var body := Vector2.ZERO
+	if Upright.on:
+		_draw_vent_ring(a)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_draw_figure(a)
+		body = Vector2(0, -Upright.BOLT_LIFT)
+	else:
+		match frame:
+			"furnace": _draw_furnace(a, core)
+			"arclight": _draw_arclight(a, core)
+			_: _draw_riveter(a, core)
+	if shield > 0.0:
+		var blink := shield > 1.0 or int(shield * 10.0) % 2 == 0
+		if blink:
+			var pts := PackedVector2Array()
+			for i in 7:
+				pts.append(body + Vector2.from_angle(i * TAU / 6.0 + PI / 6.0) * (RADIUS + 9.0))
+			draw_polyline(pts, Color(1, 0.75, 0.3, 0.9 * a), 3.0)
+			draw_colored_polygon(pts.slice(0, 6), Color(1, 0.6, 0.2, 0.15 * a))
+	if not Upright.on:
+		_draw_vent_ring(a)
+
+
+## Rainside: the Sink as a standing sprite with its weapon in hand, turned to the aim.
+## Aiming up, the weapon is behind the body; the bolts leave its muzzle at BOLT_LIFT.
+func _draw_figure(a: float) -> void:
+	var gun := {"furnace": "slag_maul", "arclight": "coil_gun"}.get(frame, "rivet_gun") as String
+	var angle := aim_dir.angle()
+	var swing := maul.head_angle() if maul != null else NAN
+	if not is_nan(swing):
+		angle = swing
+	var hand := Vector2(0, -Upright.BOLT_LIFT) + Vector2.from_angle(angle) * 4.0
+	var mod := Color(1, 1, 1, a)
+	var behind := sin(angle) < -0.3
+	if behind:
+		Upright.weapon(self, gun, hand, angle, mod)
+	var moving := velocity.length() > 20.0
+	Upright.figure(self, "sink_" + frame if FigureData.FIGURES.has("sink_" + frame) else "sink_riveter", RADIUS, aim_dir, moving, 1 if not is_nan(swing) else 0, mod)
+	if not behind:
+		Upright.weapon(self, gun, hand, angle, mod)
+	if muzzle > 0.0 and frame != "furnace":
+		draw_circle(hand + aim_dir * 18.0, 5.0, Color(0.8, 1.0, 1.0, a) if frame == "arclight" else Color(1, 0.9, 0.6, a))
+
+
+func _draw_riveter(a: float, core: Color) -> void:
 	var tip := aim_dir * (RADIUS + 10.0)
 	draw_line(aim_dir * 6.0, tip, Color(0.3, 0.32, 0.35, a), 7.0)
 	draw_line(aim_dir * 6.0, tip, Color(0.75, 0.78, 0.8, a), 3.0)
 	if muzzle > 0.0:
 		draw_circle(tip + aim_dir * 3.0, 7.0, Color(1, 0.9, 0.6, a))
-	# Body + core
 	draw_circle(Vector2.ZERO, RADIUS, Color(0.2, 0.21, 0.23, a))
 	draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 24, Color(C.STEEL, a), 2.0)
 	draw_circle(Vector2.ZERO, 7.0, Color(core, a))
-	_draw_vent_ring(a)
+
+
+## Furnace: a squat octagonal hull with a glowing grille and a slag maul held out front.
+func _draw_furnace(a: float, core: Color) -> void:
+	var side := aim_dir.orthogonal()
+	var head := aim_dir * (RADIUS + 12.0)
+	draw_line(aim_dir * 4.0, head, Color(0.35, 0.3, 0.27, a), 5.0)
+	var hd := PackedVector2Array([head + side * 9.0 - aim_dir * 4.0, head + side * 9.0 + aim_dir * 6.0, head - side * 9.0 + aim_dir * 6.0, head - side * 9.0 - aim_dir * 4.0])
+	draw_colored_polygon(hd, Color(0.32, 0.3, 0.3, a))
+	draw_line(hd[1], hd[2], Color(1, 0.55, 0.2, a) if heat.value >= Heat.WARM_AT else Color(0.6, 0.6, 0.62, a), 3.0)
+	var hull := PackedVector2Array()
+	for i in 8:
+		hull.append(Vector2.from_angle(i * TAU / 8.0 + PI / 8.0) * (RADIUS + 2.0))
+	draw_colored_polygon(hull, Color(0.24, 0.2, 0.19, a))
+	hull.append(hull[0])
+	draw_polyline(hull, Color(0.7, 0.5, 0.35, a), 2.0)
+	for i in 3:
+		var y := -4.0 + i * 4.0
+		draw_line(Vector2(-6, y), Vector2(6, y), Color(core, a), 2.5)
+
+
+## Arclight: a slim round hull with a coil emitter whose rings light up with Heat.
+func _draw_arclight(a: float, core: Color) -> void:
+	var side := aim_dir.orthogonal()
+	var tip := aim_dir * (RADIUS + 9.0)
+	draw_line(aim_dir * 5.0, tip, Color(0.28, 0.32, 0.36, a), 6.0)
+	for i in 3:
+		var c := aim_dir * (RADIUS - 1.0 + i * 4.0)
+		var lit := heat.value >= i * 30.0
+		draw_line(c + side * 6.0, c - side * 6.0, Color(0.45, 0.95, 1.0, a) if lit else Color(0.4, 0.45, 0.5, a), 2.0)
+	if muzzle > 0.0:
+		draw_circle(tip + aim_dir * 2.0, 5.0, Color(0.8, 1.0, 1.0, a))
+	draw_circle(Vector2.ZERO, RADIUS - 1.0, Color(0.17, 0.2, 0.24, a))
+	draw_arc(Vector2.ZERO, RADIUS - 1.0, 0, TAU, 24, Color(0.45, 0.8, 0.95, a), 2.0)
+	draw_circle(Vector2.ZERO, 6.0, Color(core, a))
+	draw_arc(Vector2.ZERO, 9.0, 0, TAU, 16, Color(0.45, 0.95, 1.0, 0.5 * a), 1.0)
 
 
 ## Vent readiness on the Sink itself, so you never have to look at the HUD:

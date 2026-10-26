@@ -25,6 +25,8 @@ var picker: Picker
 var pause_menu: PauseMenu
 var touch: TouchControls
 var run: RunMap
+var ambience: Ambience
+var street_layout := -1 # tests: build every combat room as this hand-made Rainside layout
 
 var dead := false
 var victory := false
@@ -57,12 +59,15 @@ func _ready() -> void:
 	inventory.absolved.connect(_on_absolved)
 	world = Node2D.new()
 	add_child(world)
-	add_child(Ambience.new())
+	ambience = Ambience.new()
+	add_child(ambience)
+	add_child(Bloom.new())
 	fx = Fx.new()
 	fx.z_index = 6
 	world.add_child(fx)
 	player = Player.new()
 	player.game = self
+	player.frame = Frames.current()
 	player.inventory = inventory
 	inventory.player = player
 	effects = CombatEffects.new()
@@ -153,8 +158,24 @@ func _build_room(kind: String) -> void:
 	room_kind = kind
 	run.enter(kind)
 	took_damage_this_room = false
-	room = Room.new(_pick_layout(kind))
+	var yard := RunMap.is_yard(kind, run.index) or street_layout >= 0
+	if yard:
+		var gen := RandomNumberGenerator.new()
+		gen.seed = randi()
+		var lay := StreetGen.generate(gen)
+		if street_layout >= 0: # tests: a hand-made yard
+			var t: Dictionary = StreetData.TEMPLATES[street_layout % StreetData.TEMPLATES.size()]
+			lay = StreetGen.layout(t.lines, t.backdrop, 0)
+		var street := StreetRoom.new(lay)
+		street.focus = player
+		room = street
+	else:
+		room = Room.new(_pick_layout(kind))
 	director.room = room
+	ambience.night = yard
+	Upright.on = yard
+	world.y_sort_enabled = Upright.on
+	ambience.apply_lights()
 	room.accent = RunMap.KINDS[kind].color if not RunMap.is_combat(kind) or kind == "elite" else Color(0.9, 0.4, 0.1)
 	world.add_child(room)
 	world.move_child(room, 0)
@@ -171,6 +192,7 @@ func _build_room(kind: String) -> void:
 		doors.append(d)
 	var info: Dictionary = RunMap.KINDS[kind]
 	var label := "ROOM %d / %d" % [run.index, RunMap.GATE] if kind != "gate" else "THE GATE"
+	label += "  ·  " + Frames.info(player.frame).name + "  ·  " + Difficulty.level_name()
 	hud.banner(info.name, label)
 	if RunMap.is_combat(kind):
 		director.start_room(run.index, kind if kind == "gate" or kind == "elite" else "combat")
@@ -388,7 +410,7 @@ func ledger_lines() -> Array[String]:
 		lines.append("Risk taken: overheated, so every hit cost +1 pip")
 	for r in inventory.active_risks():
 		lines.append("Risk taken: " + r)
-	lines.append("Room %d of %d (%s)  ·  %d kills  ·  %d:%02d" % [run.index, RunMap.GATE, RunMap.KINDS[room_kind].name.capitalize(), kills, int(run_time) / 60, int(run_time) % 60])
+	lines.append("Room %d of %d (%s)  ·  %s  ·  %s  ·  %d kills  ·  %d:%02d" % [run.index, RunMap.GATE, RunMap.KINDS[room_kind].name.capitalize(), Frames.info(player.frame).name, Difficulty.level_name(), kills, int(run_time) / 60, int(run_time) % 60])
 	lines.append("Overheats this run: %d  ·  Vents: %d  ·  Scrap: %d" % [player.heat.overheat_count, player.vents, scrap])
 	return lines
 

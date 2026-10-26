@@ -5,12 +5,19 @@ extends Node2D
 
 const DOOR_TILES := [6, 12, 18] # x of each door slot's centre line, in tiles
 const ENTRY_TILE := Vector2i(12, 11)
+const RIM_RANGE := 3.0 * C.TILE # how far a bolt light reaches the wall faces (Lights.BOLT_RADIUS)
+const RIM_DEPTH := 14.0 # px a face's glow reaches into the block
 
 var lines: Array[String] = []
 var solid: Array = [] # solid[y][x] -> bool
 var rects: Array[Rect2] = []
 var size_px := Vector2(C.ROOM_W * C.TILE, C.ROOM_H * C.TILE)
 var accent := Color(0.9, 0.4, 0.1)
+var occluders := true # walls throw light shadows (StreetRoom turns this off: its props stand up instead)
+var door_row := 1 # tile row the player walks into to take a door (StreetRoom moves it down to its facade)
+var _rim: Node2D # wall faces turned towards a bolt light catch its glow
+var _rim_lights: Array = [] # [local pos, colour] per lit bolt this frame
+var _rim_drawn := false
 
 
 func _init(layout: Array = Layouts.COMBAT[0]) -> void:
@@ -41,13 +48,35 @@ func _ready() -> void:
 	glow.material = Glow.additive()
 	glow.draw.connect(_draw_glow.bind(glow))
 	add_child(glow)
+	_rim = Node2D.new()
+	_rim.material = Glow.additive()
+	_rim.draw.connect(_draw_rim)
+	add_child(_rim)
+	add_to_group("dynamic_lights")
+
+
+## Called when the Lights & shadows setting changes, also while paused.
+## Drops the rims now; the next frame redraws them if lights are still on.
+func apply_lights() -> void:
+	_rim_lights.clear()
+	_rim.queue_redraw()
+
+
+func _process(_delta: float) -> void:
+	_rim_lights.clear()
+	# Untyped on purpose: the room-generator test loads Room without the game's autoloads.
+	for bolt in get_tree().get_nodes_in_group("bolts"):
+		if bolt.lit: # only true while Lights has a light on it, so off with Lights & shadows off
+			_rim_lights.append([to_local(bolt.global_position), bolt.light_color()])
+	if not _rim_lights.is_empty() or _rim_drawn:
+		_rim.queue_redraw()
 
 
 ## True when the entry and every door slot are connected by open floor.
 func is_valid() -> bool:
 	var reach := reachable_cells(solid, ENTRY_TILE)
 	for dx: int in DOOR_TILES:
-		if not reach.has(Vector2i(dx, 1)) or not reach.has(Vector2i(dx - 1, 1)):
+		if not reach.has(Vector2i(dx, door_row)) or not reach.has(Vector2i(dx - 1, door_row)):
 			return false
 	return true
 
@@ -62,7 +91,7 @@ func entry_point() -> Vector2:
 
 ## Where the player stands to walk through door slot i.
 func door_point(slot: int) -> Vector2:
-	return Vector2(DOOR_TILES[slot] * C.TILE, 1.0 * C.TILE)
+	return Vector2(DOOR_TILES[slot] * C.TILE, door_row * C.TILE)
 
 
 func tile_open(tile: Vector2i) -> bool:
@@ -235,6 +264,8 @@ func _solid(r: Rect2) -> void:
 	b.add_child(cs)
 	add_child(b)
 	# Walls block light, so Vents and slams throw shadows behind them.
+	if not occluders:
+		return
 	var occ := LightOccluder2D.new()
 	var poly := OccluderPolygon2D.new()
 	poly.polygon = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
@@ -253,6 +284,66 @@ func _draw_glow(glow: Node2D) -> void:
 	for side in [[inner.position, Vector2(inner.end.x, inner.position.y)], [inner.position, Vector2(inner.position.x, inner.end.y)],
 			[Vector2(inner.end.x, inner.position.y), inner.end], [Vector2(inner.position.x, inner.end.y), inner.end]]:
 		Glow.strip(glow, side[0], side[1], 10.0, Color(accent, 0.12))
+
+
+## Wall and pillar faces that look towards a bolt light catch a rim of its colour, brightest
+## nearest the bolt. Together with the shadow the light throws behind them, walls read as
+## blocks with height instead of flat floor markings.
+func _draw_rim() -> void:
+	_rim_drawn = not _rim_lights.is_empty()
+	var t := C.TILE
+	for l: Array in _rim_lights:
+		var p: Vector2 = l[0]
+		var col: Color = l[1]
+		var c := Vector2i((p / t).floor())
+		for y in range(maxi(c.y - 3, 0), mini(c.y + 4, C.ROOM_H)):
+			for x in range(maxi(c.x - 3, 0), mini(c.x + 4, C.ROOM_W)):
+				if not solid[y][x]:
+					continue
+				var o := Vector2(x, y) * t
+				# Each face that borders open floor, has the light in front of it and can see it.
+				if p.y < o.y and _open(x, y - 1) and _sees(p, o + Vector2(t * 0.5, -1.0)):
+					_rim_face(p, col, o, o + Vector2(t, 0), Vector2.DOWN)
+				if p.y > o.y + t and _open(x, y + 1) and _sees(p, o + Vector2(t * 0.5, t + 1.0)):
+					_rim_face(p, col, o + Vector2(0, t), o + Vector2(t, t), Vector2.UP)
+				if p.x < o.x and _open(x - 1, y) and _sees(p, o + Vector2(-1.0, t * 0.5)):
+					_rim_face(p, col, o, o + Vector2(0, t), Vector2.RIGHT)
+				if p.x > o.x + t and _open(x + 1, y) and _sees(p, o + Vector2(t + 1.0, t * 0.5)):
+					_rim_face(p, col, o + Vector2(t, 0), o + Vector2(t, t), Vector2.LEFT)
+
+
+## True when no wall tile lies on the straight line from a to b (sampled every few px).
+func _sees(a: Vector2, b: Vector2) -> bool:
+	var steps := ceili(a.distance_to(b) / 8.0)
+	for i in range(1, steps):
+		var c := Vector2i((a.lerp(b, float(i) / steps) / C.TILE).floor())
+		if not _open(c.x, c.y):
+			return false
+	return true
+
+
+func _open(x: int, y: int) -> bool:
+	return x >= 0 and y >= 0 and x < C.ROOM_W and y < C.ROOM_H and not solid[y][x]
+
+
+## A glow band along one face from a to b, fading into the block along `inward`.
+func _rim_face(p: Vector2, col: Color, a: Vector2, b: Vector2, inward: Vector2) -> void:
+	const STEPS := 4
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var lit := false
+	for i in STEPS + 1:
+		var q := a.lerp(b, float(i) / STEPS)
+		var k := clampf(1.0 - q.distance_to(p) / RIM_RANGE, 0.0, 1.0)
+		lit = lit or k > 0.0
+		pts.append(q)
+		cols.append(Color(col, 0.9 * k * k))
+	if not lit:
+		return
+	for i in range(STEPS, -1, -1):
+		pts.append(pts[i] + inward * RIM_DEPTH)
+		cols.append(Color(col, 0.0))
+	_rim.draw_polygon(pts, cols)
 
 
 func _draw() -> void:

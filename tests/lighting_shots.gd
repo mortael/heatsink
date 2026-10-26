@@ -1,7 +1,10 @@
 extends Node
 ## Staged screenshots for the lighting: rivet tracers crossing a live Linesman beam, a full Vent
-## next to the pillars of the first room, the open doors, then bolts fired into the dark. Needs a real renderer, not --headless:
-## xvfb-run godot --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
+## next to the pillars of the first room, the open doors, then bolts fired into the dark and past the pillars. Needs a real renderer, not --headless:
+## Android/web look (Compatibility renderer, no bloom):
+## xvfb-run godot --rendering-method gl_compatibility --rendering-driver opengl3 --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
+## Windows look (Forward+ with bloom):
+## xvfb-run godot --rendering-method forward_plus --rendering-driver vulkan --path . --fixed-fps 60 res://tests/lighting_shots.tscn -- <shot_dir>
 
 var game: Node
 var frame := 0
@@ -22,6 +25,9 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	seed(7)
+	Settings.lights = true # a saved "off" on this machine must not hide what the shots are for
+	Settings.bloom = true
+	print("lighting shots: renderer %s, bloom %s" % [RenderingServer.get_current_rendering_method(), "on" if Bloom.supported() else "off (Compatibility)"])
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 
@@ -82,6 +88,21 @@ func _physics_process(_delta: float) -> void:
 			p.bot_fire = true
 		330:
 			_shot("bolts_dark")
+			if game.fx.lights.bolt_lights_active() == 0:
+				push_error("lighting shots: no bolt lights while bolts are in flight")
+				get_tree().quit(1)
+				return
+			p.bot_fire = false
+		360:
+			# Bolts streaking past the pillars, with the lamp off so only bolt light and its shadows show.
+			p.position = Vector2(4.2 * t, 11.5 * t)
+			p.bot_aim = Vector2(0.03, -1).normalized()
+			p.lamp.enabled = false
+			for b in get_tree().get_nodes_in_group("bolts"):
+				b.queue_free()
+			p.bot_fire = true
+		376:
+			_shot("bolts_pillars")
 			get_tree().quit(0)
 
 

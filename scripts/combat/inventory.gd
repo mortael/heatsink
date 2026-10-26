@@ -8,7 +8,7 @@ signal changed
 signal fusion_unlocked(id: String)
 signal absolved(id: String)
 
-var player: Player # only needed to heal on a Patch Kit pickup
+var player: Player # heals on a Patch Kit pickup and tells offers/stats which Frame is active
 var run_active := true
 var owned: Array[String] = []
 var fusions: Array[String] = []
@@ -23,6 +23,15 @@ var forged := {} # fusion id -> the ingredient a Forced Fusion stood in for
 ## A Forced Fusion's stand-in counts as owning the missing ingredient's behaviour too.
 func has(id: String) -> bool:
 	return owned.has(id) or fusions.has(id) or forged.values().has(id)
+
+
+## The Frame being played; items that only make sense for some Frames are left out of offers.
+func frame() -> String:
+	return player.frame if player != null else Frames.DEFAULT
+
+
+func fits(id: String) -> bool:
+	return ItemDB.fits(id, frame())
 
 
 func count_keyword(kw: String) -> int:
@@ -128,18 +137,20 @@ func force_fusion(f: String) -> void:
 	changed.emit()
 
 
-## Pick n distinct offers. Each slot rolls 40% from keywords you already own, 60% from the open pool.
+## Pick n distinct offers. Each slot rolls 40% from keywords you already own or your Frame's native
+## keyword, 60% from the open pool. Items that don't fit the Frame are never offered.
 ## Slagged items never appear here; filter narrows the pool and exclude skips ids already on show.
 ## An unfiltered offer pads empty slots with Patch Kits; a filtered one returns only matching items,
 ## so it can come back short or empty.
 func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[String]:
 	var pool: Array[String] = []
 	for id: String in ItemDB.ITEMS:
-		if owned.has(id) or exclude.has(id) or ItemDB.is_slagged(id):
+		if owned.has(id) or exclude.has(id) or ItemDB.is_slagged(id) or not fits(id):
 			continue
 		if filter.is_valid() and not filter.call(id):
 			continue
 		pool.append(id)
+	var native: String = Frames.info(frame()).keyword
 	var result: Array[String] = []
 	for i in n:
 		if pool.is_empty():
@@ -147,7 +158,7 @@ func offer(n := 3, filter := Callable(), exclude: Array[String] = []) -> Array[S
 		var themed: Array[String] = []
 		for id in pool:
 			var kw: String = ItemDB.ITEMS[id].keyword
-			if kw != "conductor" and count_keyword(kw) > 0:
+			if kw != "conductor" and (count_keyword(kw) > 0 or kw == native):
 				themed.append(id)
 		var pick: String = themed.pick_random() if not themed.is_empty() and randf() < 0.4 else pool.pick_random()
 		pool.erase(pick)
@@ -193,7 +204,7 @@ func crit_chance() -> float:
 	return Player.CRIT_CHANCE + (0.2 if is_tempered("cinder_lens") else 0.1)
 
 
-func projectile_speed_mult() -> float:
+func projectile_mult() -> float:
 	if not has("long_barrel"):
 		return 1.0
 	return 1.5 if is_tempered("long_barrel") else 1.3
@@ -212,8 +223,17 @@ func cursed(id: String) -> bool:
 	return owned.has(id) and ItemDB.is_slagged(id) and not absolved_ids.has(id)
 
 
+## Brittle Crown: +2 rivets (Riveter), a shockwave on every swing (Furnace) or +2 beam forks (Arclight).
 func extra_projectiles() -> int:
-	return 2 if has("brittle_crown") else 0
+	return 2 if has("brittle_crown") and frame() == "riveter" else 0
+
+
+func extra_shockwaves() -> int:
+	return 1 if has("brittle_crown") and frame() == "furnace" else 0
+
+
+func extra_forks() -> int:
+	return 2 if has("brittle_crown") and frame() == "arclight" else 0
 
 
 func vent_damage_mult() -> float:
@@ -295,3 +315,15 @@ func arc_targets(base: int) -> int:
 
 func shard_count(base: int) -> int:
 	return base + (2 if resonance("shrapnel") else 0)
+
+
+func molten_scale() -> float:
+	return 1.5 if resonance("molten") else 1.0
+
+
+func molten_extra_life() -> float:
+	return 1.0 if resonance("molten") else 0.0
+
+
+func molten_dps() -> float:
+	return SlagPool.DPS * (2.0 if is_tempered("slag_trail") else 1.0)

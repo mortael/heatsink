@@ -12,13 +12,15 @@ const WARM_AT := 40.0
 const HOT_AT := 80.0
 const OVERHEAT_TIME := 2.0
 const RESET_AFTER_OVERHEAT := 50.0
+const DECAY_DELAY := 1.0
+const DECAY_RATE := 12.0
 
 var value := 0.0
 var cap := 100.0
 var hot_at := HOT_AT # Feral Valve lowers this
 var overheat_time := OVERHEAT_TIME
-var decay_rate := 12.0
-var decay_delay := 1.0
+var decay_rate := DECAY_RATE
+var decay_delay := DECAY_DELAY
 var band: Band = Band.COLD
 var overheat_timer := 0.0
 var overheat_count := 0

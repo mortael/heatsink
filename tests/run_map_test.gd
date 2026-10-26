@@ -50,7 +50,7 @@ func _route_contracts() -> void:
 					if (policy == 1 and RunMap.is_combat(kind)) or (policy == 2 and not RunMap.is_combat(kind)):
 						choice = kind
 				route.enter(choice)
-			check(route.elite_offers >= RunMap.ELITE_MIN, "Every route offers at least two Elites")
+			check(route.elite_offers >= route.elite_min, "Every route offers at least its difficulty's minimum Elites")
 			check(route.exits.is_empty(), "Gate terminates the route")
 
 

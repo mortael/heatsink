@@ -5,7 +5,7 @@ extends CharacterBody2D
 signal defeated(enemy: Enemy)
 
 ## OTHER covers test/debug hits that don't need to match a specific source.
-enum DamageKind { OTHER, RIVET, SHARD, ARC, VENT, IGNITE, FLARE }
+enum DamageKind { OTHER, RIVET, SHARD, ARC, VENT, IGNITE, FLARE, BEAM, MAUL, MOLTEN, SHOCKWAVE }
 
 const MAX_RIVETS := 8
 const RIVET_LIFE := 6.0
@@ -27,15 +27,19 @@ var last_depth := 0 # shard generation that last hit us (limits shard cascades)
 var ignite_stacks := 0
 var ignite_time := 0.0
 var _ignite_tick := 0.0
+var _beam_sum := 0.0 # Coil Lance ticks are shown as one merged number every BEAM_NUMBER s
+var _beam_t := 0.0
 var _nav_wp := Vector2.ZERO
 var _nav_t := 0.0
 
 const IGNITE_DURATION := 3.0
 const IGNITE_TICK := 0.5
 const IGNITE_DPS_PER_STACK := 4.0
+const BEAM_NUMBER := 0.4
 
 
 func _ready() -> void:
+	max_hp *= Difficulty.value("hp")
 	hp = max_hp
 	collision_layer = C.LAYER_ENEMY
 	collision_mask = C.LAYER_WALL
@@ -45,7 +49,7 @@ func _ready() -> void:
 	cs.shape = sh
 	add_child(cs)
 	add_to_group("enemies")
-	z_index = 2
+	z_index = 3 if Upright.on else 2 # 2.5D: same layer as the Sink, so the world's y-sort decides who stands in front
 
 
 func _physics_process(delta: float) -> void:
@@ -60,6 +64,10 @@ func _physics_process(delta: float) -> void:
 	_tick_ignite(delta)
 	if dead:
 		return
+	if _beam_sum > 0.0:
+		_beam_t -= delta
+		if _beam_t <= 0.0:
+			_show_beam_number()
 	_ai(delta)
 	var k := knock
 	velocity += k
@@ -124,6 +132,13 @@ func take_damage(amount: float, crit: bool, push: Vector2, kind: DamageKind, dep
 	knock += push
 	if kind == DamageKind.IGNITE:
 		game.fx.number(global_position + Vector2(0, -radius - 6), amount, false, Color(1, 0.6, 0.25), 14)
+	elif kind == DamageKind.BEAM and not crit:
+		if _beam_sum <= 0.0:
+			_beam_t = BEAM_NUMBER
+		_beam_sum += amount
+		if flash_frames <= 0 and randf() < 0.35:
+			flash_frames = 2
+			flash_crit = false
 	else:
 		flash_frames = 3
 		flash_crit = crit
@@ -141,7 +156,14 @@ func take_damage(amount: float, crit: bool, push: Vector2, kind: DamageKind, dep
 		_die()
 
 
+func _show_beam_number() -> void:
+	game.fx.number(global_position + Vector2(0, -radius - 6), _beam_sum, false, Color(0.6, 0.95, 1.0), 16)
+	_beam_sum = 0.0
+
+
 func _die() -> void:
+	if _beam_sum > 0.0:
+		_show_beam_number()
 	dead = true
 	remove_from_group("enemies")
 	_death_feedback()
@@ -188,6 +210,20 @@ func _separation() -> Vector2:
 		if l < reach and l > 0.01:
 			push += d / l * (1.0 - l / reach)
 	return push
+
+
+## Rainside: the enemy as a standing sprite with its hit flash and Ignite glow at its feet.
+## Returns false in flat rooms, where the caller draws its own art.
+func draw_figure(fig: String, face: Vector2, pose := 0, lift := 0.0) -> bool:
+	if not Upright.on:
+		return false
+	Upright.figure(self, fig, radius, face, velocity.length() > 20.0, pose, Upright.flash(flash_frames, flash_crit), lift)
+	if ignite_stacks > 0:
+		var k := clampf(ignite_stacks / 10.0, 0.2, 1.0)
+		draw_set_transform(Upright.feet(radius), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 20, Color(1, 0.5, 0.12, 0.5 + 0.4 * k), 2.0 + 2.0 * k)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
 
 
 ## White flash: full for 1 frame, 50% for the next 2.

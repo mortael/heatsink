@@ -8,7 +8,7 @@ extends PanelContainer
 signal back
 
 const SCROLL_SPEED := 700.0 # pixels per second at full stick
-const PAGES := ["BASICS", "HEAT & VENT", "ITEMS", "ENEMIES", "THE ROUTE"]
+const PAGES := ["BASICS", "FRAMES", "HEAT & VENT", "ITEMS", "ENEMIES", "THE ROUTE"]
 
 var tabs: Array[Button] = []
 var page := 0
@@ -101,9 +101,10 @@ func show_page(i: int) -> void:
 func page_text(i: int) -> String:
 	match i:
 		0: return _basics()
-		1: return _heat()
-		2: return _items()
-		3: return _enemies()
+		1: return _frames()
+		2: return _heat()
+		3: return _items()
+		4: return _enemies()
 		_: return _route()
 
 
@@ -145,8 +146,8 @@ static func _dim(s: String) -> String:
 
 static func _basics() -> String:
 	var t := _h("What is HEATSINK?")
-	t += "You are a Sink: a small war machine whose gun runs on heat. Fight through a Stratum of 12 rooms, pick up items that change how your shots, Vents and dashes work, and beat the Foundry Gate at the end. Die and the run is over: the Death Ledger shows what got you, and a new run starts from scratch.\n\n"
-	t += "The core idea: firing makes you hotter, and hotter is stronger, until it isn't. Run hot, Vent hard, don't melt.\n\n"
+	t += "You are a Sink: a small war machine whose weapon runs on heat. Pick a Frame (your weapon and play style), then fight through a Stratum of 12 rooms, pick up items that change how your shots, Vents and dashes work, and beat the Foundry Gate at the end. Die and the run is over: the Death Ledger shows what got you, and a new run starts from scratch.\n\n"
+	t += "The core idea: attacking makes you hotter, and hotter is stronger, until it isn't. Run hot, Vent hard, don't melt.\n\n"
 	t += _h("Controls")
 	t += "[table=3]"
 	var rows := [
@@ -181,21 +182,41 @@ static func _basics() -> String:
 	return t
 
 
+static func _frames() -> String:
+	var t := "START RUN first asks which Frame you take. Each one has its own weapon, its own Overdrive in the Hot band, its own Vent and a passive. The last Frame you played is remembered.\n\n"
+	for id in Frames.ORDER:
+		var f: Dictionary = Frames.info(id)
+		var kw: String = f.keyword
+		t += _h(f.name + "  " + _dim(f.role), f.color)
+		t += f.blurb + "\n"
+		t += "[ul]"
+		t += _c("Weapon: ", UiStyle.HOT) + f.weapon + "\n"
+		t += _c("Overdrive (Hot): ", C.HEAT_HOT) + f.overdrive + "\n"
+		t += _c("Vent: ", C.HEAT_WARM) + f.vent + "\n"
+		t += _c("Passive: ", UiStyle.HOT) + f.passive + "\n"
+		t += _c("Plating: ", Color(0.8, 0.85, 0.9)) + "%d pips.  " % f.pips + _c("Native keyword: ", ItemDB.keyword_color(kw)) + kw.capitalize() + " (item offers lean toward it).\n"
+		t += "[/ul]\n"
+	t += _dim("Items work with every Frame: \"hits\" means rivets, swings, shockwaves and beam pulses alike. A few rivet-only items (Bank Shot, Rebound Charge, and Splinter Heads for the Arclight) are never offered to a Frame they can't help.")
+	return t
+
+
 static func _heat() -> String:
 	var t := _h("The Heat gauge")
-	t += "Every shot adds %d Heat. Heat starts to cool %d s after your last shot, at %d per second. The gauge has three bands:\n" % [int(Player.HEAT_PER_SHOT), 1, 12]
+	t += "Attacking adds Heat: %d per rivet, %d per maul swing, %d per second of beam. Heat starts to cool %d s after your last attack, at %d per second. The gauge has three bands:\n" % [int(Player.HEAT_PER_SHOT), int(SlagMaul.HEAT_PER_SWING), int(CoilLance.HEAT_PER_SEC), int(Heat.DECAY_DELAY), int(Heat.DECAY_RATE)]
 	t += "[ul]"
-	t += _c("COLD", C.HEAT_COLD) + " (0-%d): normal rivets.\n" % int(Heat.WARM_AT)
-	t += _c("WARM", C.HEAT_WARM) + " (%d-%d): still normal rivets, but some items only work from Warm up.\n" % [int(Heat.WARM_AT), int(Heat.HOT_AT)]
-	t += _c("HOT", C.HEAT_HOT) + " (%d+): " % int(Heat.HOT_AT) + _c("Overdrive", C.HEAT_HOT) + ". Rivets burn gold, pierce one enemy and ricochet off a wall once. The screen edges glow orange.\n"
+	t += _c("COLD", C.HEAT_COLD) + " (0-%d): your weapon's base form.\n" % int(Heat.WARM_AT)
+	t += _c("WARM", C.HEAT_WARM) + " (%d-%d): still the base form, but some items only work from Warm up, and the Coil Lance chains one enemy further.\n" % [int(Heat.WARM_AT), int(Heat.HOT_AT)]
+	t += _c("HOT", C.HEAT_HOT) + " (%d+): " % int(Heat.HOT_AT) + _c("Overdrive", C.HEAT_HOT) + ". Rivets burn gold, pierce one enemy and ricochet; the Slag Maul throws shockwaves; the Coil Lance forks into three. The screen edges glow orange.\n"
 	t += "[/ul]"
 	t += _dim("Some items move these lines: Feral Valve starts Overdrive at 60, and a Stoke Altar raises the cap to 120 Heat.") + "\n\n"
 	t += _h("Overheat", C.HEAT_OVER)
 	t += "Reach the cap (100 Heat) and you Overheat: the gun locks for %d s, you move 20%% slower and every hit costs 1 extra pip. Afterwards the gauge resets to %d. The gauge flashes red just before it happens.\n\n" % [int(Heat.OVERHEAT_TIME), int(Heat.RESET_AFTER_OVERHEAT)]
 	t += _h("Vent")
-	t += "Vent dumps all your Heat at once as a nova around you. The more Heat you dump, the bigger and harder it hits: the radius grows from %.1f tiles (cold) to %.1f tiles (full), and damage is 0.6 per point of Heat.\n" % [2.5, 2.5 + 100.0 / 25.0]
+	t += "Vent dumps all your Heat at once as a nova around you. The more Heat you dump, the bigger and harder it hits: the radius grows from %.1f tiles (cold) to %.1f tiles (full), and damage is 0.6 per point of Heat, times your Frame's Vent multiplier (Riveter x1.0, Furnace x1.5, Arclight x0.8).\n" % [2.5, 2.5 + 100.0 / 25.0]
 	t += "[ul]"
-	t += "Every rivet stuck in an enemy detonates for %d damage, and each one adds +%d%% Vent damage to the enemy it sits in. Shoot first, Vent second.\n" % [int(Player.RIVET_BURST_DAMAGE), int(Player.TENSION_PER_RIVET * 100.0)]
+	t += _c("Riveter: ", Frames.info("riveter").color) + "every rivet stuck in an enemy detonates for %d damage, and each one adds +%d%% Vent damage to the enemy it sits in. Shoot first, Vent second.\n" % [int(Player.RIVET_BURST_DAMAGE), int(Player.TENSION_PER_RIVET * 100.0)]
+	t += _c("Furnace: ", Frames.info("furnace").color) + "Vent at %d+ Heat and a Slag Shield takes the next hit within %d s (a gold pip next to your Plating).\n" % [int(Player.SLAG_SHIELD_AT), int(Player.SLAG_SHIELD_TIME)]
+	t += _c("Arclight: ", Frames.info("arclight").color) + "a Static Pylon stays behind and zaps the nearest enemy for %d every %.1f s for %d s.\n" % [int(StaticPylon.DAMAGE), StaticPylon.EVERY, int(StaticPylon.LIFE)]
 	t += "You can Vent while Overheated, but only at half damage.\n"
 	t += "Cooldown: %d s (Coolant Line shortens it). The ring around your Sink fills while it cools down and glows orange when it's ready.\n" % int(Player.VENT_COOLDOWN)
 	t += "[/ul]\n"
@@ -203,9 +224,9 @@ static func _heat() -> String:
 	t += "You have %d dash charges; each recharges in %.1f s. A dash makes you briefly untouchable and quenches %d Heat, so it doubles as a way to stay in the Hot band without Overheating.\n\n" % [Player.DASH_MAX, Player.DASH_RECHARGE, int(Player.DASH_QUENCH)]
 	t += _h("Tips")
 	t += "[ul]"
-	t += "Fire in bursts to ride the Hot band, dash to shave off Heat, and Vent when a crowd is stuck full of rivets.\n"
+	t += "Attack in bursts to ride the Hot band, dash to shave off Heat, and Vent when a crowd is stuck full of rivets.\n"
 	t += "A Vent at low Heat is small. Save it for when the gauge is high, unless you need the push-back to escape.\n"
-	t += "Each rivet has a %d%% chance to crit.\n" % int(Player.CRIT_CHANCE * 100.0)
+	t += "Every hit has a %d%% chance to crit.\n" % int(Player.CRIT_CHANCE * 100.0)
 	t += "[/ul]"
 	return t
 
@@ -274,6 +295,12 @@ static func _enemies() -> String:
 	t += _c("cyan", C.TELE_LINE) + " is a line or beam, " + _c("violet", C.TELE_STATE) + " is a warning that something is about to change.\n\n"
 	t += _h("Clinker", C.TELE_MELEE)
 	t += "Fodder that comes in packs. Its mouth glows orange and it squashes down for %.1f s, then it lunges %d tiles. It stops tracking you just before the lunge, so dash through it or step aside. Clinkers sometimes drop Scrap.\n\n" % [Clinker.WINDUP, int(Clinker.LUNGE_DIST / C.TILE)]
+	t += _h("Sparkhound", C.TELE_MELEE)
+	t += "A fast, low hound (from room 2). It plants its feet while an " + _c("orange arrow", C.TELE_MELEE) + " shows its lane for %.2f s, then rushes %d tiles. Step sideways or dash; a missed rush leaves it skidding for %.1f s.\n\n" % [Sparkhound.AIM, int(Sparkhound.RUSH_DIST / C.TILE), Sparkhound.SKID]
+	t += _h("Slagspitter", C.TELE_LINE)
+	t += "A squat crucible on legs (from room 4) that keeps %d-%d tiles away. Five dotted " % [int(Slagspitter.KEEP_MIN / C.TILE), int(Slagspitter.KEEP_MAX / C.TILE)] + _c("cyan lanes", C.TELE_LINE) + " show for %.1f s, then five slow slag bolts fly along them. Stand between the lanes or dash through.\n\n" % Slagspitter.AIM
+	t += _h("Slag Mortar", C.TELE_GROUND)
+	t += "A tracked kiln (from room 5) that backs away from you. A " + _c("red ring", C.TELE_GROUND) + " on the floor marks where its shell lands and fills in during the %.1f s flight. Leave the ring.\n\n" % SlagMortar.MortarShell.FLIGHT
 	t += _h("Linesman", C.TELE_LINE)
 	t += "A tall drone (from room 3) that is harmless on its own and keeps %d-%d tiles away. It draws a dotted " % [int(Linesman.KEEP_MIN / C.TILE), int(Linesman.KEEP_MAX / C.TILE)]
 	t += _c("violet", C.TELE_STATE) + " line to a nearby enemy, and %.1f s later the line becomes a " % Linesman.TETHER_AIM + _c("cyan beam", C.TELE_LINE)
@@ -314,6 +341,8 @@ static func _route() -> String:
 	t += "[/ul]\n"
 	t += _h("Elite doors", RunMap.KINDS.elite.color)
 	t += "A red double frame. Inside waits a Forgewarden with Clinkers (and sometimes a Linesman), plus a second wave. The reward is 1 Core and a pick of 3 Rare-or-better items, each with a 20% chance to be Slagged. Every Stratum offers at least two, but never as the only door, so there is always a safer way.\n\n"
+	t += _h("Rainside yards", RunMap.YARD_COLOR)
+	t += "From room %d on, Salvage, Conductor and Scrap Cache fights take place in a foundry yard at night in the rain, seen at an angle: tanks, floodlights, crates, wagons and barriers stand up out of the wet floor, and tall things hide what is behind them until you walk under them. Every yard is laid out anew. Elite rooms and the Gate stay flat arenas.\n\n" % (RunMap.FLAT_ROOMS + 1)
 	t += _h("The Foundry Gate", RunMap.KINDS.gate.color)
 	t += "The last fight of the Stratum: three waves, ending with a Forgewarden and a Linesman. Clear it and the Stratum is yours."
 	return t

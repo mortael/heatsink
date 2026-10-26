@@ -21,12 +21,17 @@ func _process(delta: float) -> void:
 
 
 func on_rivet_hit(e: Enemy, overdrive: bool, crit: bool) -> void:
+	on_weapon_hit(e, overdrive, crit)
+
+
+## Every Frame's weapon calls this once per hit: a rivet, a maul swing or shockwave, or a beam pulse.
+func on_weapon_hit(e: Enemy, hot: bool, crit: bool) -> void:
 	var inv := inventory
 	if inv.has("bellows_valve") and player.heat.band >= Heat.Band.WARM:
 		inv.proc_bonus = minf(0.2, inv.proc_bonus + 0.02)
 	var times := 2 if crit and inv.has("cinder_lens") else 1
 	for i in times:
-		_apply_on_hit(e, overdrive)
+		_apply_on_hit(e, hot)
 	if inv.has("static_rivets"):
 		_static_hits += 1
 		if _static_hits % (3 if inv.is_tempered("static_rivets") else 5) == 0:
@@ -48,9 +53,39 @@ func _apply_on_hit(e: Enemy, hot: bool) -> void:
 		e.add_ignite(3 if inv.is_tempered("pyre_coating") else 2, inv.ignite_cap())
 
 
+## A Molten pool the player made burns an enemy. Cinder Spill pools also set it on fire.
+func on_molten_tick(e: Enemy) -> void:
+	if inventory.has("cinder_spill"):
+		e.add_ignite(1, inventory.ignite_cap())
+
+
+## Slag Trail: a Molten pool where a dash starts and where it ends.
+func on_dash(from: Vector2) -> void:
+	if inventory.has("slag_trail"):
+		spawn_pool(from, 0.7)
+
+
+func on_dash_end(at: Vector2) -> void:
+	if inventory.has("slag_trail"):
+		spawn_pool(at, 0.7)
+
+
+func spawn_pool(pos: Vector2, scale := 1.0) -> void:
+	var pool := SlagPool.new()
+	pool.game = player.game
+	pool.position = pos
+	pool.radius = SlagPool.RADIUS * scale
+	pool.dps = inventory.molten_dps()
+	projectile_parent.add_child.call_deferred(pool)
+
+
 func on_kill(e: Enemy) -> void:
 	var inv := inventory
 	var pos := e.global_position
+	if inv.has("cinder_spill"):
+		var at := Heat.Band.WARM if inv.is_tempered("cinder_spill") else Heat.Band.HOT
+		if player.heat.band >= at and player.heat.band != Heat.Band.OVERHEAT:
+			spawn_pool(pos, 0.6)
 	if e.last_kind == Enemy.DamageKind.ARC and inv.has("heat_engine"):
 		player.refund_vent_cooldown(0.5)
 	if e.last_kind == Enemy.DamageKind.VENT and inv.cursed("hungry_coal"):
@@ -139,7 +174,7 @@ func spawn_shard(pos: Vector2, dir: Vector2, depth: int) -> void:
 	s.depth = depth
 	s.homing = inventory.has("cluster_embers")
 	s.flare = inventory.has("firestorm_lattice")
-	s.speed_mult = inventory.projectile_speed_mult()
+	s.speed_mult = inventory.projectile_mult()
 	projectile_parent.add_child(s)
 
 
