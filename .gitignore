@@ -26,3 +26,11 @@ mono_crash.*.json
 
 # Local export output (CI builds these)
 build/
+
+# Local scanner environment and Python bytecode
+.desloppify/scanner-env/
+__pycache__/
+*.py[cod]
+addons/godot_ai/
+.desloppify/*
+!.desloppify/config.json

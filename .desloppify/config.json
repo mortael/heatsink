@@ -1,0 +1,264 @@
+{
+  "target_strict_score": 85,
+  "review_max_age_days": 30,
+  "review_batch_max_files": 80,
+  "holistic_max_age_days": 30,
+  "generate_scorecard": true,
+  "badge_path": "scorecard.png",
+  "exclude": [
+    "addons/godot_ai",
+    ".desloppify",
+    ".agents",
+    "addons/.godot_ai_update/backup/**"
+  ],
+  "ignore": [
+    "test_coverage::scripts/combat/player.gd::untested_critical",
+    "test_coverage::scripts/item_db.gd::untested_module",
+    "test_coverage::scripts/combat/enemies/clinker.gd::untested_module",
+    "test_coverage::scripts/world/scrap_bit.gd::untested_module",
+    "test_coverage::scripts/combat/projectiles/shard.gd::untested_module",
+    "test_coverage::scripts/presentation/glow.gd::untested_module",
+    "test_coverage::scripts/combat/enemies/enemy.gd::untested_module",
+    "test_coverage::scripts/ui/ui_style.gd::untested_module",
+    "test_coverage::scripts/world/pedestal.gd::untested_module",
+    "test_coverage::scripts/combat/projectiles/rivet.gd::untested_module",
+    "test_coverage::scripts/presentation/ambience.gd::untested_module",
+    "test_coverage::scripts/world/room.gd::untested_critical",
+    "test_coverage::scripts/ui/hud.gd::untested_critical",
+    "test_coverage::scripts/presentation/fx.gd::untested_critical",
+    "test_coverage::scripts/ui/main_menu.gd::untested_module",
+    "test_coverage::scripts/combat/enemies/forgewarden.gd::untested_critical",
+    "test_coverage::scripts/ui/touch_controls.gd::untested_critical",
+    "test_coverage::scripts/ui/codex_panel.gd::untested_critical",
+    "test_coverage::scripts/ui/settings_panel.gd::untested_module",
+    "test_coverage::scripts/presentation/lights.gd::untested_module",
+    "test_coverage::scripts/presentation/sfx.gd::untested_module",
+    "test_coverage::scripts/world/door.gd::untested_module",
+    "test_coverage::scripts/ui/fps_counter.gd::untested_module",
+    "test_coverage::scripts/world/layouts.gd::untested_module",
+    "test_coverage::scripts/combat/enemies/linesman.gd::untested_critical",
+    "test_coverage::scripts/ui/pause_menu.gd::untested_module",
+    "test_coverage::scripts/presentation/juice.gd::untested_module",
+    "test_coverage::scripts/combat/projectiles/molten_patch.gd::untested_module"
+  ],
+  "ignore_metadata": {
+    "test_coverage::scripts/combat/player.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:45:28+00:00",
+      "fingerprints": [
+        "33e87dc1d112026b"
+      ]
+    },
+    "test_coverage::scripts/item_db.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:45:53+00:00",
+      "fingerprints": [
+        "344bd3951e6538b2"
+      ]
+    },
+    "test_coverage::scripts/combat/enemies/clinker.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:45:55+00:00",
+      "fingerprints": [
+        "4d93301320e033c1"
+      ]
+    },
+    "test_coverage::scripts/world/scrap_bit.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:45:57+00:00",
+      "fingerprints": [
+        "80d97f0e87d2174c"
+      ]
+    },
+    "test_coverage::scripts/combat/projectiles/shard.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:45:58+00:00",
+      "fingerprints": [
+        "bac49d90d07b7d62"
+      ]
+    },
+    "test_coverage::scripts/presentation/glow.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:00+00:00",
+      "fingerprints": [
+        "aef038fbbe2562fb"
+      ]
+    },
+    "test_coverage::scripts/combat/enemies/enemy.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:02+00:00",
+      "fingerprints": [
+        "f7ca8aaa2714bc6a"
+      ]
+    },
+    "test_coverage::scripts/ui/ui_style.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:04+00:00",
+      "fingerprints": [
+        "1ff21a53eb75ef38"
+      ]
+    },
+    "test_coverage::scripts/world/pedestal.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:06+00:00",
+      "fingerprints": [
+        "811cacabce9f2471"
+      ]
+    },
+    "test_coverage::scripts/combat/projectiles/rivet.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:07+00:00",
+      "fingerprints": [
+        "834e2ade86951418"
+      ]
+    },
+    "test_coverage::scripts/presentation/ambience.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:09+00:00",
+      "fingerprints": [
+        "c60685a49b3623b6"
+      ]
+    },
+    "test_coverage::scripts/world/room.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:11+00:00",
+      "fingerprints": [
+        "0e359db786d67369"
+      ]
+    },
+    "test_coverage::scripts/ui/hud.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:13+00:00",
+      "fingerprints": [
+        "e8618d8c8bcd1839"
+      ]
+    },
+    "test_coverage::scripts/presentation/fx.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:15+00:00",
+      "fingerprints": [
+        "68f8f224a0cbda52"
+      ]
+    },
+    "test_coverage::scripts/ui/main_menu.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:17+00:00",
+      "fingerprints": [
+        "d49fda8bebbc04f3"
+      ]
+    },
+    "test_coverage::scripts/combat/enemies/forgewarden.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:19+00:00",
+      "fingerprints": [
+        "d2701c94a073118b"
+      ]
+    },
+    "test_coverage::scripts/ui/touch_controls.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:21+00:00",
+      "fingerprints": [
+        "15b8516be34871e7"
+      ]
+    },
+    "test_coverage::scripts/ui/codex_panel.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:22+00:00",
+      "fingerprints": [
+        "60dbea45c1f7d43b"
+      ]
+    },
+    "test_coverage::scripts/ui/settings_panel.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:24+00:00",
+      "fingerprints": [
+        "efaab3ce94a4c1a1"
+      ]
+    },
+    "test_coverage::scripts/presentation/lights.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:26+00:00",
+      "fingerprints": [
+        "4cfdb9d53b5c23b3"
+      ]
+    },
+    "test_coverage::scripts/presentation/sfx.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:28+00:00",
+      "fingerprints": [
+        "30d4e25a7ac785be"
+      ]
+    },
+    "test_coverage::scripts/world/door.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:30+00:00",
+      "fingerprints": [
+        "2a35182fa9758d60"
+      ]
+    },
+    "test_coverage::scripts/ui/fps_counter.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:32+00:00",
+      "fingerprints": [
+        "f36dd68f3764b90d"
+      ]
+    },
+    "test_coverage::scripts/world/layouts.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:34+00:00",
+      "fingerprints": [
+        "0417c8af173a3361"
+      ]
+    },
+    "test_coverage::scripts/combat/enemies/linesman.gd::untested_critical": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:36+00:00",
+      "fingerprints": [
+        "90cc6346c277cb48"
+      ]
+    },
+    "test_coverage::scripts/ui/pause_menu.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:38+00:00",
+      "fingerprints": [
+        "9ddedc5074fdbc4a"
+      ]
+    },
+    "test_coverage::scripts/presentation/juice.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:40+00:00",
+      "fingerprints": [
+        "67937b64b4abc18b"
+      ]
+    },
+    "test_coverage::scripts/combat/projectiles/molten_patch.gd::untested_module": {
+      "note": "Path-independent suppression fingerprints captured by suppress.",
+      "added_at": "2026-10-25T22:46:42+00:00",
+      "fingerprints": [
+        "74b30f8a518901ba"
+      ]
+    }
+  },
+  "zone_overrides": {
+    "addons/godot_ai": "vendor"
+  },
+  "review_dimensions": [],
+  "large_files_threshold": 0,
+  "props_threshold": 0,
+  "issue_noise_budget": 10,
+  "issue_noise_global_budget": 0,
+  "execution_log_max_entries": 10000,
+  "needs_rescan": false,
+  "languages": {},
+  "commit_tracking_enabled": true,
+  "commit_pr": 0,
+  "commit_default_branch": "",
+  "commit_message_template": "desloppify: {status} {count} issue(s) \u2014 {summary}",
+  "trust_plugins": false,
+  "transition_messages": {},
+  "hermes_enabled": false,
+  "hermes_models": {
+    "execute": "openrouter:x-ai/grok-4.20-beta",
+    "review": "openrouter:google/gemini-3.1-pro-preview"
+  }
+}

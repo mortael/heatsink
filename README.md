@@ -118,59 +118,95 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 
 | Path | What it is |
 | --- | --- |
-| `scripts/heat.gd` | Heat gauge, bands, decay, Overheat |
-| `scripts/player.gd` | Movement, Rivet Gun, dash, Vent, damage; picks the Frame's weapon |
-| `scripts/frames.gd`, `scripts/frame_panel.gd` | The three Frames' data and the Frame cards after START RUN |
-| `scripts/slag_maul.gd`, `scripts/shockwave.gd`, `scripts/slag_pool.gd` | Furnace: maul combo and Momentum, Overdrive shockwaves, the Molten pools the player leaves |
-| `scripts/coil_lance.gd`, `scripts/static_pylon.gd` | Arclight: channelled beam with chains and forks, the Vent's Static Pylon |
-| `scripts/rivet.gd` | Projectile with embed, pierce and ricochet |
-| `scripts/enemy.gd`, `scripts/clinker.gd` | Enemy base and the Clinker fodder |
-| `scripts/linesman.gd` | Linesman: Tether beam and Snap Back |
-| `scripts/sparkhound.gd`, `scripts/slagspitter.gd`, `scripts/slag_bolt.gd`, `scripts/slag_mortar.gd` | Sparkhound, Slagspitter and its bolts, Slag Mortar and its shells |
-| `scripts/difficulty.gd`, `scripts/difficulty_panel.gd` | The five difficulty levels and the picker after START RUN |
-| `scripts/forgewarden.gd`, `scripts/molten_patch.gd` | Forgewarden Elite: armour, Hammerfall, Bellows Breath, Molten floor |
-| `scripts/director.gd` | Wave plans from Threat Point budgets, Elite rooms, portal warnings |
-| `scripts/juice.gd`, `scripts/sfx.gd`, `scripts/fx.gd` | Hit-stop, shake, synthesized sound, particles |
-| `scripts/hud.gd` | Heat gauge, pips, item chips, edge tints, Death Ledger |
+| `scripts/combat/heat.gd` | Heat gauge, bands, decay, Overheat |
+| `scripts/combat/player.gd` | Movement, Rivet Gun, dash, Vent, damage; picks the Frame's weapon |
+| `scripts/frames.gd`, `scripts/ui/frame_panel.gd` | The three Frames' data and the Frame cards after START RUN |
+| `scripts/combat/weapons/slag_maul.gd`, `scripts/combat/projectiles/shockwave.gd`, `scripts/combat/projectiles/slag_pool.gd` | Furnace: maul combo and Momentum, Overdrive shockwaves, the Molten pools the player leaves |
+| `scripts/combat/weapons/coil_lance.gd`, `scripts/combat/projectiles/static_pylon.gd` | Arclight: channelled beam with chains and forks, the Vent's Static Pylon |
+| `scripts/combat/projectiles/rivet.gd` | Projectile with embed, pierce and ricochet |
+| `scripts/combat/enemies/enemy.gd`, `scripts/combat/enemies/clinker.gd` | Enemy base and the Clinker fodder |
+| `scripts/combat/enemies/linesman.gd` | Linesman: Tether beam and Snap Back |
+| `scripts/combat/enemies/sparkhound.gd`, `scripts/combat/enemies/slagspitter.gd`, `scripts/combat/projectiles/slag_bolt.gd`, `scripts/combat/enemies/slag_mortar.gd` | Sparkhound, Slagspitter and its bolts, Slag Mortar and its shells |
+| `scripts/difficulty.gd`, `scripts/ui/difficulty_panel.gd` | The five difficulty levels and the picker after START RUN |
+| `scripts/combat/enemies/forgewarden.gd`, `scripts/combat/projectiles/molten_patch.gd` | Forgewarden Elite: armour, Hammerfall, Bellows Breath, Molten floor |
+| `scripts/combat/director.gd` | Wave plans from Threat Point budgets, Elite rooms, portal warnings |
+| `scripts/presentation/juice.gd`, `scripts/presentation/sfx.gd`, `scripts/presentation/fx.gd` | Hit-stop, shake, synthesized sound, particles |
+| `scripts/ui/hud.gd` | Heat gauge, pips, item chips, edge tints, Death Ledger |
 | `scripts/item_db.gd` | Item, Resonance and Fusion data |
-| `scripts/inventory.gd` | Owned items, offers, and the trigger hooks that give items their behaviour |
-| `scripts/shard.gd` | Shrapnel shards, homing embers and Firestorm flares |
-| `scripts/picker.gd` | Pick-1-of-N card screen for rewards, the Crucible and the coin flip |
-| `scripts/run_map.gd` | The Stratum route: room types and door rolls with the GDD's constraints |
-| `scripts/room.gd`, `scripts/layouts.gd` | Room built from a layout template, plus pathing and line-of-sight helpers |
-| `scripts/room_gen.gd` | Procedural combat-room generator and the rules every room must pass |
-| `scripts/door.gd` | Doors that preview the next room |
-| `scripts/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
-| `scripts/scrap_bit.gd` | Scrap pickups |
-| `scripts/glow.gd`, `scripts/lights.gd`, `scripts/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
-| `scripts/bloom.gd` | Soft bloom on bright things; desktop builds only (they run Forward+), Android and web stay on Compatibility without bloom |
-| `menu.tscn`, `scripts/main_menu.gd` | Title screen (the scene the game starts on) |
-| `scripts/pause_menu.gd`, `scripts/settings_panel.gd` | Pause menu and the shared Settings panel |
-| `scripts/codex_panel.gd` | The Codex: how-to-play pages, with items and room types read from the game data |
-| `scripts/settings.gd`, `scripts/ui_style.gd`, `scripts/fps_counter.gd` | Saved settings (autoload), the menu look and the optional FPS counter |
+| `scripts/combat/inventory.gd` | Owned items, offers, and the trigger hooks that give items their behaviour |
+| `scripts/combat/projectiles/shard.gd` | Shrapnel shards, homing embers and Firestorm flares |
+| `scripts/ui/picker.gd` | Pick-1-of-N card screen for rewards, the Crucible and the coin flip |
+| `scripts/run/run_map.gd` | The Stratum route: room types and door rolls with the GDD's constraints |
+| `scripts/world/room.gd`, `scripts/world/layouts.gd` | Room built from a layout template, plus pathing and line-of-sight helpers |
+| `scripts/world/room_gen.gd` | Procedural combat-room generator and the rules every room must pass |
+| `scripts/world/street_room.gd`, `scripts/world/street_gen.gd`, `scripts/world/street_data.gd` | Rainside yards: the 2.5D room type, its procedural generator, and hand-authored templates |
+| `scripts/world/door.gd` | Doors that preview the next room |
+| `scripts/world/pedestal.gd` | Shop items, repairs, the Anvil, altars and the Crucible |
+| `scripts/world/scrap_bit.gd` | Scrap pickups |
+| `scripts/presentation/glow.gd`, `scripts/presentation/lights.gd`, `scripts/presentation/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
+| `scripts/presentation/upright.gd`, `scripts/presentation/figure_data.gd` | Rainside's standing sprites: draws each actor as a 2.5D figure and holds their per-pose art data |
+| `scripts/presentation/bloom.gd` | Soft bloom on bright things; desktop builds only (they run Forward+), Android and web stay on Compatibility without bloom |
+| `menu.tscn`, `scripts/ui/main_menu.gd` | Title screen (the scene the game starts on) |
+| `scripts/ui/pause_menu.gd`, `scripts/ui/settings_panel.gd` | Pause menu and the shared Settings panel |
+| `scripts/ui/codex_panel.gd` | The Codex: how-to-play pages, with items and room types read from the game data |
+| `scripts/settings.gd`, `scripts/ui/ui_style.gd`, `scripts/ui/fps_counter.gd` | Saved settings (autoload), the menu look and the optional FPS counter |
 | `tests/bot_playtest.tscn` | Automated bot playtest that reports room clear times |
+| `tests/contracts_test.tscn` | Deterministic fusion, combat, dash, input and UI contracts |
+| `tests/heat_test.tscn`, `tests/run_map_test.tscn` | Heat boundaries and signals; seeded Stratum route invariants and replay |
+| `tests/game_test.tscn` | Run lifecycle, one-time kill rewards, delayed Salvage and door transitions |
+| `tests/director_test.tscn` | Placement failure/retry, mandatory Elite spawning and encounter events |
+| `tests/presentation_test.tscn` | Glow resources, lighting and FPS settings, inherited menu styles |
+| `tests/settings_test.tscn` | Settings disk round-trip and failed-write recovery in isolated user data |
+| `tests/special_rooms_test.tscn` | Shop and vault transactions plus controlled Coin and Crucible outcomes |
+| `tests/projectile_test.tscn` | Real physics checks for Rivet collisions, shard recursion/homing and flare detonation |
+| `tests/absolution_test.tscn` | Slagged-item progress, completion signals and drawback removal |
+| `tests/inventory_test.tscn`, `tests/room_spawn_test.tscn` | Focused fusion ownership and safe spawn-placement checks |
 | `tests/room_gen_test.gd` | Generates 2000 rooms and fails if any breaks the rules or the door check |
 | `tests/menu_test.tscn` | Walks menu → settings → codex → run → pause → menu and fails if a step doesn't work |
 | `tests/frame_shots.tscn` | Screenshots of the Frame cards, the Codex page and each Frame's weapon, Overdrive and Vent (needs a renderer, not headless) |
+| `tests/muzzle_test.tscn` | Checks each Frame's weapon fires/swings/channels and reports visible muzzle state |
+| `tests/street_shots.tscn` | Screenshots of a generated Rainside yard, its props and figures (needs a renderer, not headless) |
 | `tests/ui_shots.tscn` | Screenshots of the Codex, the FPS counter and the Vent ring (needs a renderer, not headless) |
 | `tests/lighting_shots.tscn` | Staged screenshots of tracers, the Linesman beam, a Vent and bolt light and shadows by the pillars (needs a renderer, not headless; `--rendering-method forward_plus` shows bloom, `gl_compatibility` the Android/web look) |
 
 Automated playtest (headless):
 
 ```
-godot --headless --path . --fixed-fps 60 res://tests/bot_playtest.tscn -- 400 1 x
+python tests/run_headless.py res://tests/bot_playtest.tscn -- 400 1 x
 ```
 
-Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds and 3 Cores. Add `diff=0` to `diff=4` to play COLD to MELTDOWN (default WARM), and `frame=furnace` or `frame=arclight` to play another Frame (default Riveter). The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
+Use `allitems` instead of `x` to start with every item and 4 Cores as a stress test, `slagged` to start with the three Slagged items, `elite` to take every Elite door, or `forge` to start with Tinder Rounds, 3 Cores and an Anvil choice before random drops can complete the recipe naturally. Add `diff=0` to `diff=4` to play COLD to MELTDOWN (default WARM), and `frame=furnace` or `frame=arclight` to play another Frame (default Riveter). The report lists pips lost by source. The bot shops, rests, gambles and picks doors on its own, and the run ends when it clears the Gate.
 
 Room generator check (exits with code 1 on a bad room):
 
 ```
-godot --headless --path . -s res://tests/room_gen_test.gd -- 2000 1
+python tests/run_headless.py res://tests/room_gen_test.gd -- 2000 1
 ```
 
 Menu check (exits with code 1 if a menu step fails):
 
+The Python runner uses a fresh temporary user-data directory before Godot starts
+and removes it afterward, so tests cannot overwrite player preferences. It runs
+on Windows and Linux with a fixed 60 FPS. Set `GODOT_BIN` or pass `--godot` if the
+engine is not on PATH; on Windows, `py -3.11` can replace `python`.
+
 ```
-godot --headless --path . res://tests/menu_test.tscn
+python tests/run_headless.py res://tests/menu_test.tscn
+```
+
+Focused gameplay checks (each reports failures and exits nonzero if a check fails):
+
+```
+python tests/run_headless.py res://tests/contracts_test.tscn
+python tests/run_headless.py res://tests/heat_test.tscn
+python tests/run_headless.py res://tests/run_map_test.tscn
+python tests/run_headless.py res://tests/game_test.tscn
+python tests/run_headless.py res://tests/director_test.tscn
+python tests/run_headless.py res://tests/presentation_test.tscn
+python tests/run_headless.py res://tests/settings_test.tscn
+python tests/run_headless.py res://tests/special_rooms_test.tscn
+python tests/run_headless.py res://tests/projectile_test.tscn
+python tests/run_headless.py res://tests/absolution_test.tscn
+python tests/run_headless.py res://tests/inventory_test.tscn
+python tests/run_headless.py res://tests/room_spawn_test.tscn
 ```

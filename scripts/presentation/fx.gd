@@ -1,0 +1,292 @@
+class_name Fx
+extends Node2D
+## Lightweight particle, ring, portal and damage-number renderer.
+## Particle silhouettes follow GDD section 8: shrapnel = triangles, molten/slag = round blobs, sparks = streaks.
+## A child layer draws additive glow on top (halos, blast flashes), and `lights` flashes real 2D lights.
+
+class Particle:
+	extends RefCounted
+	var position: Vector2
+	var velocity: Vector2
+	var life: float
+	var max_life: float
+	var shape: String
+	var color: Color
+	var size: float
+	var rotation := randf() * TAU
+	var spin := randf_range(-12.0, 12.0)
+	var drag: float
+
+	func _init(pos: Vector2, vel: Vector2, duration: float, silhouette: String, tint: Color, radius: float, damping: float) -> void:
+		position = pos
+		velocity = vel
+		life = duration
+		max_life = duration
+		shape = silhouette
+		color = tint
+		size = radius
+		drag = damping
+
+
+const MAX_PARTS := 500
+
+var parts: Array[Particle] = []
+var rings: Array = [] # [pos, radius, color, life, max_life]
+var texts: Array = [] # [pos, text, color, size, life, max_life]
+var portals: Array = [] # [pos, life, max_life]
+var arcs: Array = [] # [from, to, life, max_life]
+var blasts: Array = [] # [pos, radius, color, life, max_life]
+var glow: Node2D
+var lights: Lights
+
+
+func _ready() -> void:
+	glow = Node2D.new()
+	glow.material = Glow.additive()
+	glow.draw.connect(_draw_glow)
+	add_child(glow)
+	lights = Lights.new()
+	add_child(lights)
+
+
+func _process(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	for i in range(parts.size() - 1, -1, -1):
+		var p: Particle = parts[i]
+		p.life -= delta
+		if p.life <= 0.0:
+			parts.remove_at(i)
+			continue
+		p.position += p.velocity * delta
+		p.velocity *= pow(p.drag, delta)
+		p.rotation += p.spin * delta
+	for i in range(rings.size() - 1, -1, -1):
+		rings[i][3] -= delta
+		if rings[i][3] <= 0.0:
+			rings.remove_at(i)
+	for i in range(texts.size() - 1, -1, -1):
+		texts[i][4] -= delta
+		texts[i][0] += Vector2(0, -48.0) * delta
+		if texts[i][4] <= 0.0:
+			texts.remove_at(i)
+	for i in range(arcs.size() - 1, -1, -1):
+		arcs[i][2] -= delta
+		if arcs[i][2] <= 0.0:
+			arcs.remove_at(i)
+	for i in range(portals.size() - 1, -1, -1):
+		portals[i][1] -= delta
+		if portals[i][1] <= 0.0:
+			portals.remove_at(i)
+	for i in range(blasts.size() - 1, -1, -1):
+		blasts[i][3] -= delta
+		if blasts[i][3] <= 0.0:
+			blasts.remove_at(i)
+	queue_redraw()
+	glow.queue_redraw()
+
+
+func clear() -> void:
+	parts.clear()
+	rings.clear()
+	texts.clear()
+	portals.clear()
+	arcs.clear()
+	blasts.clear()
+	if lights != null:
+		lights.clear()
+
+
+func _add(pos: Vector2, vel: Vector2, life: float, shape: String, color: Color, size: float, drag := 0.02) -> void:
+	if parts.size() >= MAX_PARTS:
+		parts.remove_at(0)
+	parts.append(Particle.new(pos, vel, life, shape, color, size, drag))
+
+
+func sparks(pos: Vector2, normal: Vector2, n: int, color: Color) -> void:
+	for i in n:
+		var v := normal.rotated(randf_range(-1.1, 1.1)) * randf_range(120.0, 320.0)
+		_add(pos, v, randf_range(0.12, 0.25), "spark", color, 2.0, 0.005)
+
+
+func trail(pos: Vector2, color: Color) -> void:
+	_add(pos + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Vector2.ZERO, 0.18, "circle", Color(color, 0.5), 9.0)
+
+
+func pop(pos: Vector2, color: Color) -> void:
+	for i in 10:
+		var v := Vector2.from_angle(randf() * TAU) * randf_range(80.0, 260.0)
+		_add(pos, v, randf_range(0.25, 0.5), "circle", color.lerp(Color(1, 0.55, 0.2), randf() * 0.5), randf_range(3.0, 6.0), 0.01)
+	for i in 4:
+		var v := Vector2.from_angle(randf() * TAU) * randf_range(150.0, 300.0)
+		_add(pos, v, 0.3, "spark", Color(1, 0.7, 0.3), 2.0, 0.005)
+	ring(pos, 22.0, Color(1, 0.6, 0.25, 0.8), 0.15)
+	blasts.append([pos, 40.0, Color(1, 0.55, 0.2), 0.18, 0.18])
+	lights.flash(pos, Color(1, 0.55, 0.25), 2.5 * C.TILE, 1.4, 0.25)
+
+
+func rivet_burst(pos: Vector2, count: int) -> void:
+	for i in 4 + count * 2:
+		var v := Vector2.from_angle(randf() * TAU) * randf_range(180.0, 380.0)
+		_add(pos, v, randf_range(0.2, 0.35), "tri", Color(0.82, 0.85, 0.9), randf_range(4.0, 6.0), 0.01)
+	ring(pos, C.TILE, Color(1, 1, 1, 0.9), 0.16)
+
+
+func vent_embers(pos: Vector2, radius: float, amount: float) -> void:
+	var n := int(8 + amount * 0.3)
+	for i in n:
+		var dir := Vector2.from_angle(randf() * TAU)
+		_add(pos + dir * 10.0, dir * radius * randf_range(2.0, 3.2), randf_range(0.25, 0.45), "teardrop", Color(1, randf_range(0.45, 0.8), 0.2), randf_range(3.0, 5.0), 0.004)
+
+
+## Muzzle flash: a short white-hot puff at the barrel.
+func muzzle(pos: Vector2, color: Color) -> void:
+	blasts.append([pos, 22.0, color, 0.07, 0.07])
+
+
+## An energy bolt lands: a small flash, a spark ring and a short light on the floor and walls.
+func impact(pos: Vector2, normal: Vector2, color: Color) -> void:
+	blasts.append([pos, 26.0, color, 0.14, 0.14])
+	ring(pos, 14.0, Color(color, 0.9), 0.12)
+	for i in 4:
+		var v := normal.rotated(randf_range(-1.2, 1.2)) * randf_range(140.0, 300.0)
+		_add(pos, v, randf_range(0.1, 0.2), "spark", color.lerp(Color.WHITE, 0.4), 2.0, 0.005)
+	lights.flash(pos, color, 1.6 * C.TILE, 1.2, 0.14)
+
+
+## Fizz along an energy bolt's path: tiny glowing motes that fade almost at once.
+func mote(pos: Vector2, color: Color) -> void:
+	_add(pos + Vector2(randf_range(-3, 3), randf_range(-3, 3)), Vector2(randf_range(-20, 20), randf_range(-20, 20)), randf_range(0.1, 0.2), "circle", Color(color, 0.8), randf_range(1.2, 2.2), 0.05)
+
+
+## A Vent or a slam: a white-hot core that swells and cools to `color`, plus a room-filling
+## light flash whose shadows fall away from the walls.
+func explosion(pos: Vector2, radius: float, color: Color, power := 1.0) -> void:
+	blasts.append([pos, radius, color, 0.45, 0.45])
+	lights.flash(pos, color, radius * 2.2, 1.4 + 1.8 * power, 0.55, true)
+
+
+func ring(pos: Vector2, radius: float, color: Color, life: float) -> void:
+	rings.append([pos, radius, color, life, life])
+
+
+func number(pos: Vector2, value: float, crit: bool, color := Color.WHITE, size := 18) -> void:
+	var txt := str(int(round(value))) + ("!" if crit else "")
+	var col := Color(1, 0.85, 0.2) if crit else color
+	texts.append([pos + Vector2(randf_range(-8, 8), 0), txt, col, 28 if crit else size, 0.5, 0.5])
+
+
+## Ignite: rising orange teardrop embers.
+func ember(pos: Vector2) -> void:
+	_add(pos, Vector2(randf_range(-15, 15), randf_range(-70, -40)), randf_range(0.3, 0.5), "teardrop", Color(1, randf_range(0.4, 0.7), 0.15), randf_range(2.0, 3.0), 0.3)
+
+
+## Arc: jagged cyan-white polyline, redrawn with new jitter every frame.
+func arc(from: Vector2, to: Vector2, life := 0.12) -> void:
+	arcs.append([from, to, life, life])
+
+
+## Bellows Breath: fast round flame blobs that fade from yellow to red.
+func flame(pos: Vector2, vel: Vector2) -> void:
+	_add(pos, vel, randf_range(0.25, 0.4), "circle", Color(1, randf_range(0.45, 0.8), 0.15, 0.8), randf_range(5.0, 9.0), 0.08)
+
+
+## A broken armour plate: one big tumbling shard plus sparks.
+func debris(pos: Vector2, dir: Vector2) -> void:
+	_add(pos, dir * 260.0 + Vector2(0, -80), 0.8, "tri", Color(0.78, 0.8, 0.84), 12.0, 0.05)
+	sparks(pos, dir, 10, Color(1, 0.8, 0.5))
+
+
+func portal(pos: Vector2, time: float) -> void:
+	portals.append([pos, time, time])
+
+
+func _draw_glow() -> void:
+	for b in blasts:
+		var k: float = 1.0 - b[3] / b[4] # 0 -> 1 over the blast
+		var rad: float = b[1]
+		var c: Color = b[2]
+		var fade := (1.0 - k) * (1.0 - k)
+		# Outer fireball swells fast, the white core shrinks as it cools.
+		Glow.halo(glow, b[0], rad * (0.6 + 0.9 * sqrt(k)), Color(c, 0.9 * fade))
+		Glow.halo(glow, b[0], rad * 0.55 * (1.0 - 0.6 * k), Color(Color.WHITE.lerp(c, k), fade))
+	for r in rings:
+		var k: float = 1.0 - r[3] / r[4]
+		var rad: float = r[1] * (0.25 + 0.75 * sqrt(k))
+		var c: Color = r[2]
+		glow.draw_arc(r[0], rad, 0, TAU, 48, Color(c, 0.22 * c.a * (1.0 - k)), 22.0 * (1.0 - k) + 4.0)
+	for pt in portals:
+		var k: float = 1.0 - pt[1] / pt[2]
+		Glow.halo(glow, pt[0], 34.0, Color(1, 0.45, 0.15, 0.25 + 0.35 * k))
+	for a in arcs:
+		var k: float = a[2] / a[3]
+		Glow.strip(glow, a[0], a[1], 26.0, Color(0.4, 0.85, 1.0, 0.45 * k))
+	for p in parts:
+		var shape: String = p.shape
+		if shape == "tri":
+			continue # cold steel shrapnel does not glow
+		var k: float = p.life / p.max_life
+		var c: Color = p.color
+		Glow.halo(glow, p.position, p.size * (3.5 if shape == "spark" else 2.5), Color(c, c.a * k * 0.5))
+
+
+func _draw() -> void:
+	var font := ThemeDB.fallback_font
+	for pt in portals:
+		var k: float = 1.0 - pt[1] / pt[2]
+		draw_circle(pt[0], 6.0 + 14.0 * k, Color(1, 0.45, 0.15, 0.15 + 0.25 * k))
+		draw_arc(pt[0], 20.0 - 6.0 * k, 0, TAU, 20, Color(1, 0.7, 0.35, 0.8), 2.0)
+	for a in arcs:
+		var from: Vector2 = a[0]
+		var to: Vector2 = a[1]
+		var k: float = a[2] / a[3]
+		var segs := maxi(3, int(from.distance_to(to) / 28.0))
+		var normal := (to - from).normalized().orthogonal()
+		var pts := PackedVector2Array([from])
+		for i in range(1, segs):
+			pts.append(from.lerp(to, float(i) / segs) + normal * randf_range(-10.0, 10.0))
+		pts.append(to)
+		draw_polyline(pts, Color(0.4, 0.9, 1.0, 0.35 * k), 7.0)
+		draw_polyline(pts, Color(0.85, 0.97, 1.0, k), 2.0)
+	for r in rings:
+		var k: float = 1.0 - r[3] / r[4]
+		var rad: float = r[1] * (0.25 + 0.75 * sqrt(k))
+		var c: Color = r[2]
+		draw_arc(r[0], rad, 0, TAU, 48, Color(c, c.a * (1.0 - k)), 6.0 * (1.0 - k) + 1.0)
+		draw_circle(r[0], rad, Color(c, 0.08 * (1.0 - k)))
+	for p in parts:
+		var k: float = p.life / p.max_life
+		var c: Color = p.color
+		c.a *= k
+		var pos: Vector2 = p.position
+		var s: float = p.size
+		match p.shape:
+			"circle":
+				draw_circle(pos, s * (0.4 + 0.6 * k), c)
+			"spark":
+				var v: Vector2 = p.velocity
+				draw_line(pos, pos - v * 0.03, c, s)
+			"tri":
+				var r: float = p.rotation
+				var pts := PackedVector2Array([
+					pos + Vector2.from_angle(r) * s,
+					pos + Vector2.from_angle(r + 2.4) * s * 0.7,
+					pos + Vector2.from_angle(r - 2.4) * s * 0.7,
+				])
+				draw_colored_polygon(pts, c)
+			"teardrop":
+				var v2: Vector2 = p.velocity
+				var d := v2.normalized()
+				draw_circle(pos, s * k, c)
+				draw_line(pos, pos - d * s * 3.0 * k, c, s * k)
+	for t in texts:
+		var k: float = t[4] / t[5]
+		var c: Color = t[2]
+		c.a = clampf(k * 2.0, 0.0, 1.0)
+		var size: int = t[3]
+		var pop := 1.0
+		if size > 20 and k > 0.85:
+			pop = 1.25
+		var fs := int(size * pop)
+		draw_string_outline(font, t[0] - Vector2(fs * 0.6, 0), t[1], HORIZONTAL_ALIGNMENT_CENTER, fs * 1.2, fs, 4, Color(0, 0, 0, c.a))
+		draw_string(font, t[0] - Vector2(fs * 0.6, 0), t[1], HORIZONTAL_ALIGNMENT_CENTER, fs * 1.2, fs, c)

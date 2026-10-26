@@ -1,7 +1,9 @@
 extends Node
 ## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> Frame -> difficulty (and back to the
 ## Frames) -> run as the Furnace -> pause -> Main menu.
-## Run: godot --headless --path . res://tests/menu_test.tscn
+## Run: python tests/run_headless.py res://tests/menu_test.tscn
+
+const TestEnvironment = preload("res://tests/test_environment.gd")
 
 var step := 0
 var wait := 0
@@ -12,6 +14,9 @@ var paused: bool:
 
 func _ready() -> void:
 	tree = get_tree()
+	if not TestEnvironment.is_isolated():
+		_fail("run through tests/run_headless.py so menu navigation cannot overwrite player settings")
+		return
 	if ProjectSettings.get_setting("application/run/main_scene") != "res://menu.tscn":
 		_fail("the game's start scene is not the main menu")
 		return
