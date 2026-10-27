@@ -162,7 +162,7 @@ func _build_room(kind: String) -> void:
 	if yard:
 		var gen := RandomNumberGenerator.new()
 		gen.seed = randi()
-		var lay := StreetGen.generate(gen)
+		var lay := StreetGen.generate(gen, ELITE_DENSITY if kind == "elite" else StreetGen.DENSITY)
 		if street_layout >= 0: # tests: a hand-made yard
 			var t: Dictionary = StreetData.TEMPLATES[street_layout % StreetData.TEMPLATES.size()]
 			lay = StreetGen.layout(t.lines, t.backdrop, 0)
@@ -209,7 +209,7 @@ func _pick_layout(kind: String) -> Array[String]:
 	if randf() >= TEMPLATE_CHANCE:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = randi()
-		return RoomGen.generate(rng, ELITE_DENSITY if kind == "elite" else 1.0)
+		return RoomGen.generate(rng, 1.0) # Elite always reaches here as a yard room instead; see ELITE_DENSITY
 	for attempt in 8:
 		var lines := Layouts.variant(Layouts.COMBAT.pick_random(), randf() < 0.5, randf() < 0.5)
 		var probe := Room.new(lines)

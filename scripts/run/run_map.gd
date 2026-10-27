@@ -12,15 +12,15 @@ extends RefCounted
 ## - a Cooling Vault always sits right before the Gate, plus a 50% chance of one mid-run;
 ## - an Elite door (red frame) is offered at least twice per Stratum, never as the only door,
 ##   so the safe route always exists. Harder difficulty levels offer Elite doors more often.
-## Rooms 1 and 2 are flat top-down rooms; from room 3 on, Salvage, Conductor and Scrap Cache fights take
-## place in a Rainside yard (2.5D, rainy night). Elite rooms and the Gate stay flat arenas.
+## Rooms 1 and 2 are flat top-down rooms; from room 3 on, Salvage, Conductor, Scrap Cache and
+## Elite fights take place in a Rainside yard (2.5D, rainy night). The Gate stays a flat arena.
 
 const ROOMS := 12
 const GATE := ROOMS + 1
 const ELITE_FIRST := 3 # earliest room an Elite door can lead to
 const ELITE_LAST := 11
 const FLAT_ROOMS := 2 # the run always starts top-down
-const YARD_KINDS := ["combat_item", "combat_conductor", "combat_scrap"]
+const YARD_KINDS := ["combat_item", "combat_conductor", "combat_scrap", "elite"]
 const YARD_COLOR := Color(1.0, 0.4, 0.62)
 
 const KINDS := {

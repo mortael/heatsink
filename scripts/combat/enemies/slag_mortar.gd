@@ -129,8 +129,13 @@ class MortarShell:
 		var k := progress()
 		var c := target - global_position
 		# Red landing ring, filling in as the shell falls (GDD: red = area on the ground).
+		# Flattened to the floor in 2.5D rooms; the airborne shell below keeps its own silhouette.
+		if Upright.on:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 		draw_arc(c, RADIUS, 0, TAU, 32, Color(C.TELE_GROUND, 0.85), 2.5)
 		draw_circle(c, RADIUS * k, Color(C.TELE_GROUND, 0.18 + 0.12 * k))
+		if Upright.on:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# The shell itself, on an arc from barrel to target.
 		var pos := from.lerp(target, k) - global_position + Vector2(0, -sin(k * PI) * 3.0 * C.TILE)
 		draw_circle(pos, 6.0 + 3.0 * sin(k * PI), Color(1.0, 0.55, 0.2))
