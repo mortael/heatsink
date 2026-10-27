@@ -33,7 +33,22 @@ DOOR_TILES = [6, 12, 18]
 # The night tint the game's CanvasModulate puts over this room; the base is painted brighter
 # by the inverse so it ends up as painted while actors still read as lit by night.
 NIGHT = np.array([0.62, 0.66, 0.84], np.float32)
-FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+def _font_bold() -> str:
+	"""DejaVu Sans Bold, wherever this machine keeps it (same font either way, so output stays identical)."""
+	linux_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # most Linux distros
+	if os.path.exists(linux_path):
+		return linux_path
+	try:
+		import matplotlib
+		bundled = os.path.join(os.path.dirname(matplotlib.__file__), "mpl-data", "fonts", "ttf", "DejaVuSans-Bold.ttf")
+		if os.path.exists(bundled):
+			return bundled
+	except ImportError:
+		pass
+	raise FileNotFoundError("DejaVu Sans Bold not found; install it or add its path to _font_bold()'s candidates")
+
+
+FONT_BOLD = _font_bold()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -853,6 +868,8 @@ STYLES = {
 				"lit": 0.7, "glass": col(0.5, 0.85, 1.0), "stacks": [420], "vents": [40, 200, 300, 520], "downpipes": [60, 330, 590]},
 	"scrapyard": {"roof": col(0.19, 0.18, 0.19), "wall": "brick", "wall_col": col(0.3, 0.19, 0.15), "win": (13, 13), "gap": 16,
 				  "lit": 0.6, "glass": col(1.0, 0.62, 0.3), "stacks": [30, 470, 590], "vents": [180], "downpipes": [210, 440]},
+	"foundry": {"roof": col(0.12, 0.09, 0.09), "wall": "corrugated", "wall_col": col(0.24, 0.1, 0.08), "win": (17, 13), "gap": 12,
+				"lit": 0.85, "glass": col(1.0, 0.3, 0.1), "stacks": [60, 230, 560], "vents": [140, 360], "downpipes": [100, 380, 620]},
 }
 
 # '#' boundary (the hall fills rows 0-2), '.' floor. Props, every tile of them solid:
@@ -929,6 +946,30 @@ LAYOUTS = [
 			"########################",
 		],
 	},
+	{
+		"name": "foundry_gate", "style": "foundry", "seed": 53,
+		"sign": ("FOUNDRY", "GATE", 420, 11, 20, col(1.0, 0.2, 0.08), col(1.0, 0.55, 0.15)),
+		"ground": [("deck", 2, 4, 22, 10)],
+		"lanes": [(x, 4, 9) for x in (5, 9, 14, 18)],
+		"spills": [(5.0, 8.5, 4), (19.0, 8.5, 4), (12.0, 10.3, 3)],
+		# A wide, mostly open arena for the Foundry Gate: the final fight needs room for Hammerfall's
+		# ring and Bellows Breath's cone, up to two Forgewardens at once on the hardest difficulty.
+		"lines": [
+			"########################",
+			"########################",
+			"########################",
+			"#......................#",
+			"#.L....v........v....L.#",
+			"#.L....v........v....L.#",
+			"#......................#",
+			"#......................#",
+			"#......................#",
+			"#......................#",
+			"#T....................T#",
+			"#......................#",
+			"########################",
+		],
+	},
 ]
 
 
@@ -964,11 +1005,13 @@ SIGNS = {
 	"smelter": [("SMELTER", "NO. 7"), ("SMELTER", "NO. 3"), ("FOUNDRY", "HALL 2")],
 	"coolant": [("COOLANT", "PUMP HOUSE"), ("COOLANT", "LOOP B"), ("QUENCH", "TANK FARM")],
 	"scrapyard": [("SCRAP YARD", "KEEP OUT"), ("SCRAP YARD", "NO ENTRY"), ("SALVAGE", "WEIGH STATION")],
+	"foundry": [("FOUNDRY", "GATE"), ("FOUNDRY", "HALL 9"), ("THE FOUNDRY", "NO ENTRY")],
 }
 SIGN_COLORS = {
 	"smelter": (col(1.0, 0.45, 0.12), col(1.0, 0.75, 0.3)),
 	"coolant": (col(0.25, 0.9, 1.0), col(0.6, 1.0, 0.95)),
 	"scrapyard": (col(1.0, 0.22, 0.18), col(1.0, 0.7, 0.2)),
+	"foundry": (col(1.0, 0.2, 0.08), col(1.0, 0.55, 0.15)),
 }
 SIGN_X = (446, 430, 404)  # generated signs stay right of centre: the left corner holds the HUD
 VARIANTS = 3  # backdrops per style; variant 0 is the hand-made template's ground
@@ -1206,7 +1249,7 @@ def write_data(bds, props, templates):
 			out.append('\t\t"%s",' % row)
 		out.append("\t]},")
 	out.append("]")
-	with open(os.path.join(ROOT, "scripts", "street_data.gd"), "w") as f:
+	with open(os.path.join(ROOT, "scripts", "world", "street_data.gd"), "w") as f:
 		f.write("\n".join(out) + "\n")
 
 

@@ -11,6 +11,7 @@ const DROP_CHANCE := 0.25
 const SLAGGED_SLOT := 0.2 # elite rewards: chance per card to be a Slagged item
 const TEMPLATE_CHANCE := 0.25 # combat rooms: chance of a hand-authored layout instead of a generated one
 const ELITE_DENSITY := 0.7 # generated Elite rooms get less cover so the Forgewarden can turn
+const GATE_TEMPLATE := "foundry_gate" # the Foundry Gate is always this one hand-authored yard
 
 var world: Node2D
 var room: Room
@@ -158,14 +159,19 @@ func _build_room(kind: String) -> void:
 	room_kind = kind
 	run.enter(kind)
 	took_damage_this_room = false
-	var yard := RunMap.is_yard(kind, run.index) or street_layout >= 0
+	var yard := RunMap.is_yard(kind, run.index) or street_layout >= 0 or kind == "gate"
 	if yard:
-		var gen := RandomNumberGenerator.new()
-		gen.seed = randi()
-		var lay := StreetGen.generate(gen, ELITE_DENSITY if kind == "elite" else StreetGen.DENSITY)
-		if street_layout >= 0: # tests: a hand-made yard
+		var lay: Dictionary
+		if kind == "gate": # always the same hand-authored arena, like the flat rooms' fixed layout
+			var t: Dictionary = StreetData.TEMPLATES.filter(func(x: Dictionary) -> bool: return x.name == GATE_TEMPLATE)[0]
+			lay = StreetGen.layout(t.lines, t.backdrop, 0)
+		elif street_layout >= 0: # tests: a hand-made yard
 			var t: Dictionary = StreetData.TEMPLATES[street_layout % StreetData.TEMPLATES.size()]
 			lay = StreetGen.layout(t.lines, t.backdrop, 0)
+		else:
+			var gen := RandomNumberGenerator.new()
+			gen.seed = randi()
+			lay = StreetGen.generate(gen, ELITE_DENSITY if kind == "elite" else StreetGen.DENSITY)
 		var street := StreetRoom.new(lay)
 		street.focus = player
 		room = street
@@ -204,7 +210,7 @@ func _build_room(kind: String) -> void:
 func _pick_layout(kind: String) -> Array[String]:
 	if not RunMap.is_combat(kind):
 		return Layouts.HALL
-	if kind == "gate" or run.index == 1:
+	if run.index == 1: # the run always starts in this room; the Gate is a yard now, see GATE_TEMPLATE
 		return Layouts.COMBAT[0]
 	if randf() >= TEMPLATE_CHANCE:
 		var rng := RandomNumberGenerator.new()
