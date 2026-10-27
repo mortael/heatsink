@@ -245,20 +245,24 @@ func _hum() -> float:
 func _draw_beam() -> void:
 	if tether == T.IDLE or partner == null or not is_instance_valid(partner):
 		return
+	# Baked into the points below rather than a draw_set_transform(): Glow.strip() sets and
+	# resets its own transform internally, so it would silently clobber one set here, leaving
+	# everything after the first strip call back at ground height instead of chest height.
+	var lift := Vector2(0, -Upright.BOLT_LIFT) if Upright.on else Vector2.ZERO
+	var origin := lift
 	var to := partner.global_position - global_position
-	_beam_fx.draw_set_transform(Vector2(0, -Upright.BOLT_LIFT) if Upright.on else Vector2.ZERO)
 	if tether == T.AIM:
 		# A faint violet charge-up along the dotted telegraph line.
 		var k := 1.0 - tether_t / TETHER_AIM
-		Glow.strip(_beam_fx, Vector2.ZERO, to, 10.0 + 8.0 * k, Color(C.TELE_STATE, 0.12 + 0.2 * k))
+		Glow.strip(_beam_fx, origin, origin + to, 10.0 + 8.0 * k, Color(C.TELE_STATE, 0.12 + 0.2 * k))
 		return
-	var tip := to * beam_extent()
+	var tip := origin + to * beam_extent()
 	var hum := _hum()
-	Glow.strip(_beam_fx, Vector2.ZERO, tip, 64.0 * hum, Color(C.TELE_LINE, 0.35))
-	Glow.strip(_beam_fx, Vector2.ZERO, tip, 22.0 * hum, Color(C.TELE_LINE, 0.95))
-	Glow.strip(_beam_fx, Vector2.ZERO, tip, 8.0, Color(0.8, 1, 1, 1))
-	_beam_fx.draw_line(Vector2.ZERO, tip, Color(1, 1, 1, 0.9), 2.5)
-	Glow.halo(_beam_fx, Vector2.ZERO, 30.0 * hum, Color(C.TELE_LINE, 0.8))
+	Glow.strip(_beam_fx, origin, tip, 64.0 * hum, Color(C.TELE_LINE, 0.35))
+	Glow.strip(_beam_fx, origin, tip, 22.0 * hum, Color(C.TELE_LINE, 0.95))
+	Glow.strip(_beam_fx, origin, tip, 8.0, Color(0.8, 1, 1, 1))
+	_beam_fx.draw_line(origin, tip, Color(1, 1, 1, 0.9), 2.5)
+	Glow.halo(_beam_fx, origin, 30.0 * hum, Color(C.TELE_LINE, 0.8))
 	Glow.halo(_beam_fx, tip, 30.0 * hum, Color(C.TELE_LINE, 0.8))
 
 

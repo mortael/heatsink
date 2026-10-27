@@ -183,19 +183,27 @@ func _zap(targets: Array) -> void:
 
 func _draw() -> void:
 	var start := player.aim_dir * (Player.RADIUS + 4.0)
+	# Baked into every point below instead of a draw_set_transform(): Glow.strip() sets and
+	# resets its own transform internally, so a transform set here would get silently clobbered
+	# the moment the first strip drew, leaving everything after it (every beam line, every jag,
+	# every end flare, every link) back at the un-lifted body-centre height - only the very first
+	# halo, drawn before any strip call, was ever actually using this offset.
+	var offset := Vector2.ZERO
 	if Upright.on: # from the coil gun's barrel tip, not the body's centre
 		var angle := player.aim_dir.angle()
 		var hand := Vector2(0, -Upright.BOLT_LIFT) + player.aim_dir * 4.0
-		draw_set_transform(Upright.muzzle("coil_gun", hand, angle) - start)
+		offset = Upright.muzzle("coil_gun", hand, angle) - start
 	if beams.is_empty():
 		return
 	var hot := player.heat.band == Heat.Band.HOT
 	var col := Color(0.45, 0.95, 1.0) if not hot else Color(0.85, 1.0, 1.0)
 	var flick := 0.85 + 0.15 * sin(_t * 70.0)
-	Glow.halo(self, start, 22.0 * flick, Color(col, 0.8))
+	Glow.halo(self, start + offset, 22.0 * flick, Color(col, 0.8))
 	for b in beams:
-		var end: Vector2 = b[0]
-		var from := start if end.length() > start.length() else Vector2.ZERO # a wall right at the emitter
+		var end_raw: Vector2 = b[0]
+		var from_raw := start if end_raw.length() > start.length() else Vector2.ZERO # a wall right at the emitter
+		var from := from_raw + offset
+		var end := end_raw + offset
 		Glow.strip(self, from, end, 26.0 * flick, Color(col, 0.55))
 		Glow.strip(self, from, end, 9.0, Color(1, 1, 1, 0.9))
 		_jag(from, end, Color(col, 0.9), 2.0)
@@ -203,8 +211,8 @@ func _draw() -> void:
 		# never looks like it's simply cut off against a wall or the end of its range.
 		Glow.halo(self, end, (30.0 if b[1] else 17.0) * flick, Color(col, 0.7 if b[1] else 0.45))
 	for l in links:
-		var a: Vector2 = l[0]
-		var b2: Vector2 = l[1]
+		var a: Vector2 = l[0] + offset
+		var b2: Vector2 = l[1] + offset
 		Glow.strip(self, a, b2, 16.0, Color(col, 0.45))
 		_jag(a, b2, Color(0.85, 0.97, 1.0, 0.95), 2.0)
 		Glow.halo(self, b2, 20.0, Color(col, 0.6))
