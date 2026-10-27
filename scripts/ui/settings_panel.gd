@@ -6,6 +6,7 @@ extends PanelContainer
 signal back
 
 var volume: HSlider
+var music: HSlider
 var shake: HSlider
 var fullscreen: CheckButton
 var lights: CheckButton
@@ -30,6 +31,11 @@ func _init() -> void:
 		Settings.dirty = true
 		Settings.apply()
 		Sfx.play("shot", 0.0, -6.0))
+	music = _slider(col, "Music", Settings.music)
+	music.value_changed.connect(func(v: float) -> void:
+		Settings.music = v
+		Settings.dirty = true
+		Settings.apply())
 	shake = _slider(col, "Screen shake", Settings.shake)
 	shake.value_changed.connect(func(v: float) -> void:
 		Settings.shake = v
@@ -113,6 +119,7 @@ func _slider(parent: Control, text: String, value: float) -> HSlider:
 
 func open() -> void:
 	volume.set_value_no_signal(Settings.volume)
+	music.set_value_no_signal(Settings.music)
 	shake.set_value_no_signal(Settings.shake)
 	# Show the real window mode: the browser can leave fullscreen on its own (Esc) or refuse it.
 	if Settings.can_fullscreen():

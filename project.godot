@@ -12,7 +12,7 @@ config_version=5
 
 config/name="HEATSINK"
 config/description="Prototype: Riveter, Heat, Vent, Clinkers"
-run/main_scene="res://menu.tscn"
+run/main_scene="res://title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
@@ -20,6 +20,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 Juice="*res://scripts/presentation/juice.gd"
 Sfx="*res://scripts/presentation/sfx.gd"
 Settings="*res://scripts/settings.gd"
+Music="*res://scripts/presentation/music.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]

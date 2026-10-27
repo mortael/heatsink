@@ -1,6 +1,6 @@
 extends Node
-## Smoke test for the menus: title screen -> Settings -> Codex -> Start -> Frame -> difficulty (and back to the
-## Frames) -> run as the Furnace -> pause -> Main menu.
+## Smoke test for the menus: logo splash (starts the music) -> main menu -> Settings -> Codex ->
+## Start -> Frame -> difficulty (and back to the Frames) -> run as the Furnace -> pause -> Main menu.
 ## Run: python tests/run_headless.py res://tests/menu_test.tscn
 
 const TestEnvironment = preload("res://tests/test_environment.gd")
@@ -8,6 +8,7 @@ const TestEnvironment = preload("res://tests/test_environment.gd")
 var step := 0
 var wait := 0
 var tree: SceneTree
+var _title_checked := false
 var paused: bool:
 	get: return tree.paused
 
@@ -17,8 +18,8 @@ func _ready() -> void:
 	if not TestEnvironment.is_isolated():
 		_fail("run through tests/run_headless.py so menu navigation cannot overwrite player settings")
 		return
-	if ProjectSettings.get_setting("application/run/main_scene") != "res://menu.tscn":
-		_fail("the game's start scene is not the main menu")
+	if ProjectSettings.get_setting("application/run/main_scene") != "res://title.tscn":
+		_fail("the game's start scene is not the title splash")
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Hand "current scene" to a stand-in so changing scenes frees that and leaves this test running.
@@ -26,7 +27,7 @@ func _ready() -> void:
 	tree.root.add_child.call_deferred(stand_in)
 	(func() -> void:
 		tree.current_scene = stand_in
-		tree.change_scene_to_file("res://menu.tscn")).call_deferred()
+		tree.change_scene_to_file("res://title.tscn")).call_deferred()
 
 
 func quit(code: int) -> void:
@@ -39,7 +40,35 @@ func _fail(msg: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	if not _title_checked:
+		_title_step()
+		return
 	_step()
+
+
+## The splash should start the music and hand off to the main menu on the first key press,
+## without restarting anything (it's the same autoload the whole way through).
+func _title_step() -> void:
+	wait += 1
+	if wait < 5:
+		return
+	var scene := tree.current_scene
+	if not _title_checked and scene is TitleScreen:
+		if not Music.player.playing:
+			_fail("the title splash did not start the music")
+			return
+		var ev := InputEventKey.new()
+		ev.pressed = true
+		ev.keycode = KEY_ENTER
+		Input.parse_input_event(ev)
+		return
+	if scene is MainMenu:
+		if not Music.player.playing:
+			_fail("the music stopped when the splash handed off to the main menu")
+			return
+		_title_checked = true
+		wait = 0
+		step = 0
 
 
 func _step() -> bool:
