@@ -4,6 +4,7 @@ extends Node
 const PATH := "user://settings.cfg"
 
 var volume := 0.8 # master volume, 0..1
+var music := 0.6 # music bus volume, 0..1
 var shake := 1.0 # screen shake strength, 0..1
 var fullscreen := false
 var lights := true # dynamic 2D lights and wall shadows; glow drawing stays on either way
@@ -29,6 +30,7 @@ func _ready() -> void:
 
 func load_values(cfg: ConfigFile) -> void:
 	volume = _read_setting(cfg, "audio", "volume", volume)
+	music = _read_setting(cfg, "audio", "music", music)
 	shake = _read_setting(cfg, "video", "shake", shake)
 	fullscreen = _read_setting(cfg, "video", "fullscreen", fullscreen)
 	lights = _read_setting(cfg, "video", "lights", lights)
@@ -67,6 +69,7 @@ static func can_fullscreen() -> bool:
 func apply(with_fullscreen := true) -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(volume) if volume > 0.0 else -80.0)
 	AudioServer.set_bus_mute(0, volume <= 0.0)
+	Music.apply_volume()
 	Juice.shake_strength = shake
 	if with_fullscreen and can_fullscreen():
 		var want := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
@@ -77,6 +80,7 @@ func apply(with_fullscreen := true) -> void:
 func save(path := PATH) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.set_value("audio", "volume", volume)
+	cfg.set_value("audio", "music", music)
 	cfg.set_value("video", "shake", shake)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "lights", lights)

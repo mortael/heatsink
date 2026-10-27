@@ -131,6 +131,7 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/combat/enemies/forgewarden.gd`, `scripts/combat/projectiles/molten_patch.gd` | Forgewarden Elite: armour, Hammerfall, Bellows Breath, Molten floor |
 | `scripts/combat/director.gd` | Wave plans from Threat Point budgets, Elite rooms, portal warnings |
 | `scripts/presentation/juice.gd`, `scripts/presentation/sfx.gd`, `scripts/presentation/fx.gd` | Hit-stop, shake, synthesized sound, particles |
+| `scripts/presentation/music.gd`, `audio/music/` | Background music (autoload): one looping track, started once at the title screen, that survives every scene change |
 | `scripts/ui/hud.gd` | Heat gauge, pips, item chips, edge tints, Death Ledger |
 | `scripts/item_db.gd` | Item, Resonance and Fusion data |
 | `scripts/combat/inventory.gd` | Owned items, offers, and the trigger hooks that give items their behaviour |
@@ -146,7 +147,8 @@ A run is 12 rooms, then the Foundry Gate. The strip at the top of the screen sho
 | `scripts/presentation/glow.gd`, `scripts/presentation/lights.gd`, `scripts/presentation/ambience.gd` | Additive glow textures, the pool of 2D light flashes that throw wall shadows, and the room dimming that makes lights read |
 | `scripts/presentation/upright.gd`, `scripts/presentation/figure_data.gd` | Rainside's standing sprites: draws each actor as a 2.5D figure and holds their per-pose art data |
 | `scripts/presentation/bloom.gd` | Soft bloom on bright things; desktop builds only (they run Forward+), Android and web stay on Compatibility without bloom |
-| `menu.tscn`, `scripts/ui/main_menu.gd` | Title screen (the scene the game starts on) |
+| `title.tscn`, `scripts/ui/title_screen.gd` | Logo splash the game starts on: starts the music, fades into the main menu |
+| `menu.tscn`, `scripts/ui/main_menu.gd` | Main menu: Start, Codex, Settings, Quit |
 | `scripts/ui/pause_menu.gd`, `scripts/ui/settings_panel.gd` | Pause menu and the shared Settings panel |
 | `scripts/ui/codex_panel.gd` | The Codex: how-to-play pages, with items and room types read from the game data |
 | `scripts/settings.gd`, `scripts/ui/ui_style.gd`, `scripts/ui/fps_counter.gd` | Saved settings (autoload), the menu look and the optional FPS counter |
