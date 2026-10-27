@@ -15,13 +15,30 @@ const MIN_LIGHTS := 2
 const HALL_ROWS := 3
 
 
+static var _ordinary_backdrops: Array[int] = [] # indices not styled "foundry" - that one is the Gate's alone
+static var _ordinary_templates: Array[int] = [] # indices other than "foundry_gate"
+
+
+static func _init_pools() -> void:
+	if not _ordinary_backdrops.is_empty():
+		return
+	for i in StreetData.BACKDROPS.size():
+		if StreetData.BACKDROPS[i].style != "foundry":
+			_ordinary_backdrops.append(i)
+	for i in StreetData.TEMPLATES.size():
+		if StreetData.TEMPLATES[i].name != "foundry_gate":
+			_ordinary_templates.append(i)
+
+
 ## A layout ready for StreetRoom: {"backdrop": index, "lines": prop chars, "props": [...]}.
 ## `density` thins the cover (an Elite fight wants more room for the Forgewarden to turn, same
-## as a flat Elite room's lower RoomGen density).
+## as a flat Elite room's lower RoomGen density). Never picks the Gate's own backdrop or template -
+## that signage and arena are reserved for the actual Foundry Gate fight.
 static func generate(rng: RandomNumberGenerator, density := DENSITY) -> Dictionary:
-	var backdrop := rng.randi_range(0, StreetData.BACKDROPS.size() - 1)
+	_init_pools()
+	var backdrop: int = _ordinary_backdrops[rng.randi_range(0, _ordinary_backdrops.size() - 1)]
 	if rng.randf() < TEMPLATE_CHANCE:
-		var t: Dictionary = StreetData.TEMPLATES[rng.randi_range(0, StreetData.TEMPLATES.size() - 1)]
+		var t: Dictionary = StreetData.TEMPLATES[_ordinary_templates[rng.randi_range(0, _ordinary_templates.size() - 1)]]
 		return layout(t.lines, t.backdrop, rng.randi())
 	var fell_back := RoomGen.fallbacks
 	var lines := RoomGen.generate(rng, density, AREA)

@@ -86,7 +86,8 @@ func _light_beam(delta: float) -> void:
 	for b in beams:
 		var end: Vector2 = b[0]
 		fx.lights.flash(origin + end * 0.5, col, 2.2 * C.TILE, 1.1, 0.1)
-		fx.lights.flash(origin + end, col, (2.8 if b[1] else 2.2) * C.TILE, 1.6 if b[1] else 1.1, 0.1)
+		# Shadows on the end light so it visibly rakes across walls and props, not just a flat wash.
+		fx.lights.flash(origin + end, col, (2.8 if b[1] else 2.2) * C.TILE, 1.6 if b[1] else 1.1, 0.1, true)
 		if spark_now:
 			fx.sparks(origin + end, -end.normalized(), 3 if b[1] else 2, col)
 

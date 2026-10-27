@@ -497,12 +497,13 @@ func _draw_figure(a: float) -> void:
 		Upright.weapon(self, gun, hand, angle, mod)
 	var moving := velocity.length() > 20.0
 	Upright.figure(self, "sink_" + frame if FigureData.FIGURES.has("sink_" + frame) else "sink_riveter", RADIUS, aim_dir, moving, 1 if not is_nan(swing) else 0, mod)
-	if not behind and is_nan(swing): # the gun shows in hand except mid-swing, where SlagMaul draws its own arc
-		Upright.weapon(self, gun, hand, angle, mod)
 	if not behind:
 		Upright.weapon(self, gun, hand, angle, mod)
 	if muzzle > 0.0 and frame != "furnace":
-		draw_circle(hand + aim_dir * 18.0, 5.0, Color(0.8, 1.0, 1.0, a) if frame == "arclight" else Color(1, 0.9, 0.6, a))
+		# Same point the beam actually starts from for Arclight, so the muzzle flash and the
+		# beam never visibly disagree about where the gun's barrel is.
+		var flash_pos := Upright.muzzle(gun, hand, angle) if frame == "arclight" else hand + aim_dir * 18.0
+		draw_circle(flash_pos, 5.0, Color(0.8, 1.0, 1.0, a) if frame == "arclight" else Color(1, 0.9, 0.6, a))
 
 
 func _draw_riveter(a: float, core: Color) -> void:
