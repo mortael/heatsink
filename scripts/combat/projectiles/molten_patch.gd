@@ -8,6 +8,7 @@ const RADIUS := 0.7 * C.TILE
 var game: RunGame
 var life := LIFE
 var burned := false # each patch costs at most 1 pip
+var _seed := randf() * 10.0
 
 
 func _ready() -> void:
@@ -31,6 +32,5 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.15, 0.45))
 	var k := life / LIFE
 	var fade := clampf(k * 3.0, 0.0, 1.0)
-	draw_circle(Vector2.ZERO, RADIUS, Color(0.95, 0.3, 0.08, 0.45 * fade))
-	draw_circle(Vector2.ZERO, RADIUS * 0.6, Color(1.0, 0.65, 0.2, 0.5 * fade))
-	draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 20, Color(C.TELE_GROUND, 0.8 * fade), 2.0)
+	var t := Time.get_ticks_msec() / 1000.0 + _seed
+	Lava.pool(self, RADIUS, t, _seed, fade, C.TELE_GROUND)

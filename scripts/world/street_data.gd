@@ -15,6 +15,9 @@ const BACKDROPS := [
 	{"name": "scrapyard_0", "style": "scrapyard", "sign_color": Color(1.00, 0.22, 0.18)},
 	{"name": "scrapyard_1", "style": "scrapyard", "sign_color": Color(1.00, 0.22, 0.18)},
 	{"name": "scrapyard_2", "style": "scrapyard", "sign_color": Color(1.00, 0.22, 0.18)},
+	{"name": "foundry_0", "style": "foundry", "sign_color": Color(1.00, 0.20, 0.08)},
+	{"name": "foundry_1", "style": "foundry", "sign_color": Color(1.00, 0.20, 0.08)},
+	{"name": "foundry_2", "style": "foundry", "sign_color": Color(1.00, 0.20, 0.08)},
 ]
 ## Per prop char (barriers by length: h1..h6), its variants; each layer's file and its
 ## top-left in world px from the top-left of the prop's first tile.
@@ -124,6 +127,21 @@ const TEMPLATES := [
 		"#..cc......L......cc...#",
 		"#......................#",
 		"#.....T..........T.....#",
+		"#......................#",
+		"########################",
+	]},
+	{"name": "foundry_gate", "backdrop": 9, "lines": [
+		"########################",
+		"########################",
+		"########################",
+		"#......................#",
+		"#.L....v........v....L.#",
+		"#.L....v........v....L.#",
+		"#......................#",
+		"#......................#",
+		"#......................#",
+		"#......................#",
+		"#T....................T#",
 		"#......................#",
 		"########################",
 	]},

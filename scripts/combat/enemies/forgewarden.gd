@@ -252,7 +252,10 @@ func _death_feedback() -> void:
 
 
 func _draw() -> void:
-	# Telegraphs on the ground first.
+	# Telegraphs on the ground first, flattened to the floor in 2.5D rooms like any other
+	# ground marker (ignite ring, molten pools) instead of floating as a flat top-down shape.
+	if Upright.on:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 	match state:
 		S.RAISE, S.LEAP:
 			var k := 1.0 - maxf(t, 0.0) / RAISE if state == S.RAISE else 1.0
@@ -275,6 +278,8 @@ func _draw() -> void:
 			for i in 9:
 				pts.append(facing.rotated(-CONE_HALF + i * CONE_HALF / 4.0) * CONE_REACH)
 			draw_colored_polygon(pts, Color(1, 0.45, 0.1, 0.22 + 0.06 * sin(Time.get_ticks_msec() / 40.0)))
+	if Upright.on:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var lift := -14.0 * sin(PI * (1.0 - maxf(t, 0.0) / LEAP_TIME)) if state == S.LEAP else 0.0
 	if draw_figure("forgewarden", facing, 1 if state == S.RAISE or state == S.LEAP else 0, lift * 2.0):
 		_draw_plates_on_floor()

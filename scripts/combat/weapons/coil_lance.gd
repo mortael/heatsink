@@ -28,6 +28,7 @@ var _tick := 0.0
 var _hum := 0.0
 var _procs := {} # enemy -> ticks taken from the main beam
 var _t := 0.0
+var _spark := 0.0
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func tick(delta: float, held: bool) -> void:
 		links.clear()
 		_tick = 0.0
 		_hum = 0.0
+		_spark = 0.0
 		queue_redraw()
 		return
 	idle = 0.0
@@ -64,21 +66,29 @@ func tick(delta: float, held: bool) -> void:
 		_tick += TICK
 		_zap(targets)
 	player.muzzle = 0.05
-	_light_beam()
+	_light_beam(delta)
 	queue_redraw()
 
 
-## Lights the room along the beam's path: one flash per fork end, refreshed every frame so it
-## reads as a continuous glow on the floor and walls while channelling instead of none at all.
-func _light_beam() -> void:
+## Lights the room along the beam's path: muzzle, midpoint and end per fork, refreshed every
+## frame so the whole run of the beam washes the floor and walls, not just its tip. Also throws
+## a few sparks off each end so it reads as striking something, not just stopping mid-air.
+func _light_beam(delta: float) -> void:
 	var fx: Fx = player.game.fx
 	var hot := player.heat.band == Heat.Band.HOT
 	var col := Color(0.45, 0.95, 1.0) if not hot else Color(0.85, 1.0, 1.0)
 	var origin := player.global_position
-	fx.lights.flash(origin + player.aim_dir * Player.RADIUS, col, 1.5 * C.TILE, 0.9, 0.1)
+	fx.lights.flash(origin + player.aim_dir * Player.RADIUS, col, 2.0 * C.TILE, 1.3, 0.1)
+	_spark -= delta
+	var spark_now := _spark <= 0.0
+	if spark_now:
+		_spark = 0.1
 	for b in beams:
 		var end: Vector2 = b[0]
-		fx.lights.flash(origin + end, col, (2.2 if b[1] else 1.8) * C.TILE, 1.0 if b[1] else 0.7, 0.1)
+		fx.lights.flash(origin + end * 0.5, col, 2.2 * C.TILE, 1.1, 0.1)
+		fx.lights.flash(origin + end, col, (2.8 if b[1] else 2.2) * C.TILE, 1.6 if b[1] else 1.1, 0.1)
+		if spark_now:
+			fx.sparks(origin + end, -end.normalized(), 3 if b[1] else 2, col)
 
 
 ## Number of beams: one, three in Overdrive, two more with Brittle Crown.

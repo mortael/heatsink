@@ -497,6 +497,8 @@ func _draw_figure(a: float) -> void:
 		Upright.weapon(self, gun, hand, angle, mod)
 	var moving := velocity.length() > 20.0
 	Upright.figure(self, "sink_" + frame if FigureData.FIGURES.has("sink_" + frame) else "sink_riveter", RADIUS, aim_dir, moving, 1 if not is_nan(swing) else 0, mod)
+	if not behind and is_nan(swing): # the gun shows in hand except mid-swing, where SlagMaul draws its own arc
+		Upright.weapon(self, gun, hand, angle, mod)
 	if not behind:
 		Upright.weapon(self, gun, hand, angle, mod)
 	if muzzle > 0.0 and frame != "furnace":

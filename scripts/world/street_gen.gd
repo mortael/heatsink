@@ -7,6 +7,7 @@ class_name StreetGen
 
 const AREA := Rect2i(3, 5, 18, 5) # cover rows 5-9: row 3 is the walkway to the doors, rows 10-11 the entry
 const TEMPLATE_CHANCE := 0.2
+const DENSITY := 0.8
 const PAIRS := "cdp"
 const SINGLES := "TTLLmggi"
 const LIGHTS := "TLmiv" # props that light the yard
@@ -15,13 +16,15 @@ const HALL_ROWS := 3
 
 
 ## A layout ready for StreetRoom: {"backdrop": index, "lines": prop chars, "props": [...]}.
-static func generate(rng: RandomNumberGenerator) -> Dictionary:
+## `density` thins the cover (an Elite fight wants more room for the Forgewarden to turn, same
+## as a flat Elite room's lower RoomGen density).
+static func generate(rng: RandomNumberGenerator, density := DENSITY) -> Dictionary:
 	var backdrop := rng.randi_range(0, StreetData.BACKDROPS.size() - 1)
 	if rng.randf() < TEMPLATE_CHANCE:
 		var t: Dictionary = StreetData.TEMPLATES[rng.randi_range(0, StreetData.TEMPLATES.size() - 1)]
 		return layout(t.lines, t.backdrop, rng.randi())
 	var fell_back := RoomGen.fallbacks
-	var lines := RoomGen.generate(rng, 0.8, AREA)
+	var lines := RoomGen.generate(rng, density, AREA)
 	if RoomGen.fallbacks > fell_back: # its fallback is a flat room's layout: use a hand-made yard instead
 		var t: Dictionary = StreetData.TEMPLATES[0]
 		return layout(t.lines, t.backdrop, rng.randi())
